@@ -112,3 +112,17 @@ InitTestScene*.unity*
 
 # Auto-generated cache in Assets folder
 /[Aa]ssets/[Ss]ceneDependencyCache*
+
+# ---- Zero Protocol (project specific)
+# old model version and other local archives (moved out of Assets, not source)
+/Archiv/
+# Blender: scratch space (old versions, experiments, source copies of the model), preview renders and videos
+/Blender/work/
+/Blender/previews/
+/Blender/**/__pycache__/
+# test pictures, films and logs made by the Play Mode checks
+/Tools/verify/
+# the session id of the Unity MCP client
+/Tools/umcp_session.txt
+__pycache__/
+*.pyc
