@@ -1,0 +1,22 @@
+{
+    "name": "ZeroProtocol.VrmImport.Editor",
+    "rootNamespace": "ZeroProtocol.EditorTools",
+    "references": [
+        "UniVRM.Editor",
+        "UniGLTF.Editor",
+        "VRM",
+        "UniGLTF",
+        "UniHumanoid"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
