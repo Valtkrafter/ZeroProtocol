@@ -18,6 +18,9 @@ namespace ZeroProtocol.Dev
         public string outputDir = "";
         public List<Vector4> settings = new List<Vector4>();          // x walkYaw, y stiffness, z drag, w walkPitch
         public float gravityOverride = -1f;
+        [Tooltip("Tune the sprint (Shift held): x sprintYaw, y sprintStiffness, z sprintDrag, w sprintPitch")]
+        public bool sprint;
+        public string blenderSide = "?", blenderHeight = "?";
         public bool finished;
 
         IEnumerator Start()
@@ -34,27 +37,29 @@ namespace ZeroProtocol.Dev
             var root = player.transform;
             var cc = player.GetComponent<CharacterController>();
             var log = new StringBuilder();
-            log.AppendLine("Blender walk: tail tip side 146 mm (x -0.080 .. 0.066), height 116 mm (-0.007 .. 0.108), reach -0.431 .. -0.424");
+            log.AppendLine("Blender walk (Blender/Yoru_Walk_reference.json): tail tip side " + blenderSide + " mm, height " + blenderHeight + " mm, reach -0.430 .. -0.425");
             log.AppendLine("walkYaw stiff  drag  walkPitch | side mm (x range)         | height mm (y range)     | reach (z range)");
             foreach (var st in settings)
             {
-                motion.walkYaw = st.x; tail.m_stiffnessForce = st.y; tail.m_dragForce = st.z; motion.walkPitch = st.w;
+                if (sprint) { motion.sprintYaw = st.x; motion.sprintStiffness = st.y; motion.sprintDrag = st.z; motion.sprintPitch = st.w; }
+                else { motion.walkYaw = st.x; motion.walkStiffness = st.y; tail.m_dragForce = st.z; motion.walkPitch = st.w; }
                 if (gravityOverride >= 0f) tail.m_gravityPower = gravityOverride;
-                cc.enabled = false; root.position = new Vector3(0f, 0.05f, -8f); root.rotation = Quaternion.identity; cc.enabled = true;
+                cc.enabled = false; root.position = new Vector3(2f, 0.05f, sprint ? -37f : -8f); root.rotation = Quaternion.identity; cc.enabled = true;
                 input.MoveOverride = new Vector2(0f, 1f);
-                yield return new WaitForSeconds(2.0f);
+                input.SprintOverride = sprint;
+                yield return new WaitForSeconds(sprint ? 2.2f : 2.5f);
                 Vector3 mn = Vector3.one * 9f, mx = Vector3.one * -9f;
                 float t0 = Time.time;
-                while (Time.time - t0 < 3.5f)
+                while (Time.time - t0 < (sprint ? 4.0f : 8.0f))
                 {
                     yield return new WaitForEndOfFrame();
                     var p = root.InverseTransformPoint(tip.position) - root.InverseTransformPoint(hips.position);
                     mn = Vector3.Min(mn, p); mx = Vector3.Max(mx, p);
                 }
-                input.MoveOverride = Vector2.zero;
+                input.MoveOverride = Vector2.zero; input.SprintOverride = false;
                 log.AppendLine(string.Format("{0,6:F1} {1,6:F2} {2,6:F2} {3,7:F1}   | {4,4:F0} ({5,6:F3} .. {6,6:F3})   | {7,4:F0} ({8,6:F3} .. {9,6:F3}) | ({10,6:F3} .. {11,6:F3})",
                     st.x, st.y, st.z, st.w, (mx.x - mn.x) * 1000f, mn.x, mx.x, (mx.y - mn.y) * 1000f, mn.y, mx.y, mn.z, mx.z));
-                yield return new WaitForSeconds(0.8f);
+                yield return new WaitForSeconds(sprint ? 1.2f : 0.8f);
             }
             File.WriteAllText(Path.Combine(outputDir, "tail_tune.txt"), log.ToString());
             finished = true;

@@ -17,6 +17,8 @@ namespace ZeroProtocol.Dev
     public class WalkVerifyTest : MonoBehaviour
     {
         public string outputDir = "";
+        public string blenderGaitJson = "";
+        public string blenderReferenceJson = "";
         public bool finished;
         readonly StringBuilder log = new StringBuilder();
         YoruController player;
@@ -106,6 +108,26 @@ namespace ZeroProtocol.Dev
             Log("controller " + (anim.runtimeAnimatorController == null ? "NONE" : anim.runtimeAnimatorController.name) + ", walkSpeed " + player.walkSpeed + ", runSpeed " + player.runSpeed + ", clipRunSpeed " + player.clipRunSpeed
                 + ", frame rate of this run " + (1f / Mathf.Max(0.0001f, Time.smoothDeltaTime)).ToString("F0") + " fps, spring steps per second " + (motion != null ? motion.springStepsPerSecond.ToString("F0") : "?"));
 
+            // the numbers of the Blender walk to compare with (Yoru_Walk_gait.json, Yoru_Walk_reference.json made by Blender/scripts/dump_reference.py)
+            string bSpeed = "?", bSteps = "?", bStepLen = "?", bPelvis = "?", bSway = "?", bTail = "?", bBust = "?", bEar = "?", bHair = "?";
+            try
+            {
+                var gj = Newtonsoft.Json.Linq.JObject.Parse(File.ReadAllText(blenderGaitJson));
+                var rj = Newtonsoft.Json.Linq.JObject.Parse(File.ReadAllText(blenderReferenceJson));
+                bSpeed = ((float)gj["speed"]).ToString("F3");
+                bSteps = ((float)gj["steps_per_minute"]).ToString("F1");
+                bStepLen = ((float)gj["step_length"]).ToString("F3");
+                bPelvis = ((float)gj["spec_report"]["pelvis_z_mm"][2]).ToString("F1") + " mm, " + ((float)gj["pelvis_height_min"]).ToString("F4") + " .. " + ((float)gj["pelvis_height_max"]).ToString("F4");
+                bSway = ((float)gj["pelvis_sway"] * 1000f).ToString("F1");
+                var tt = rj["tail_tip_vs_hips"];
+                bTail = "side " + ((float)tt["side_mm"]).ToString("F0") + " mm (x " + ((float)tt["x"][0]).ToString("F3") + " .. " + ((float)tt["x"][1]).ToString("F3") + "), height " + ((float)tt["height_mm"]).ToString("F0")
+                        + " mm (" + ((float)tt["z_height"][0]).ToString("F3") + " .. " + ((float)tt["z_height"][1]).ToString("F3") + "), reach " + ((float)tt["y_reach"][0]).ToString("F3") + " .. " + ((float)tt["y_reach"][1]).ToString("F3");
+                bBust = "max " + ((float)rj["bust_first"][0]).ToString("F1") + " mean " + ((float)rj["bust_first"][1]).ToString("F1");
+                bEar = "max " + ((float)rj["ear_tip"][0]).ToString("F1") + " mean " + ((float)rj["ear_tip"][1]).ToString("F1");
+                bHair = "max " + ((float)rj["hair_first"][0]).ToString("F1") + " mean " + ((float)rj["hair_first"][1]).ToString("F1");
+            }
+            catch (System.Exception e) { Log("Blender numbers not read: " + e.Message); }
+
             var camGo = new GameObject("WalkShotCam");
             shotCam = camGo.AddComponent<Camera>();
             shotCam.enabled = false;
@@ -156,6 +178,8 @@ namespace ZeroProtocol.Dev
             var drift = new List<float>();
             var runFrames = new List<float>();
             var rootSpeed = new List<float>();
+            var tailSide = new List<float>();
+            var tailHigh = new List<float>();
             var hipsSeries = new List<float>();
             var factorSeries = new List<float>();
             Vector3 prevRoot = root.position;
@@ -242,6 +266,7 @@ namespace ZeroProtocol.Dev
                     var rp = root.InverseTransformPoint(tailTip.position);
                     var tp = rp - root.InverseTransformPoint(hips.position);
                     tailMin = Vector3.Min(tailMin, tp); tailMax = Vector3.Max(tailMax, tp);
+                    tailSide.Add(tp.x); tailHigh.Add(tp.y);
                     tailRootMin = Vector3.Min(tailRootMin, rp); tailRootMax = Vector3.Max(tailRootMax, rp);
                 }
                 bust.Sample(); bustFirst.Sample(); ears.Sample(); hair.Sample(); hairFirst.Sample();
@@ -275,27 +300,28 @@ namespace ZeroProtocol.Dev
             float expMin = player.walkSpeed * (1f - player.gaitSpeedVariation), expMax = player.walkSpeed * (1f + player.gaitSpeedVariation);
             Log(string.Format("ground speed of the character per frame: min {0:F3}, max {1:F3}, mean {2:F3} m/s (the model says {3:F3} .. {4:F3}, mean {5:F3}); the wobble is {6:F1} % of the mean; factor {7:F3} .. {8:F3}; correlation with the pelvis height {9:F2} (a faster walker is lower: must be clearly negative)",
                 Percentile(rootSpeed, 0.02f), Percentile(rootSpeed, 0.98f), mS, expMin, expMax, player.walkSpeed, 100f * (Percentile(rootSpeed, 0.98f) - Percentile(rootSpeed, 0.02f)) / (2f * (float)mS), factorSeries.Min(), factorSeries.Max(), corr));
-            Log("samples " + n + " over " + dur.ToString("F1") + " s (" + (n / dur).ToString("F0") + " fps), average ground speed " + avgSpeed.ToString("F3") + " m/s (Blender walk speed 1.150)");
+            Log("samples " + n + " over " + dur.ToString("F1") + " s (" + (n / dur).ToString("F0") + " fps), average ground speed " + avgSpeed.ToString("F3") + " m/s (Blender walk speed " + bSpeed + ")");
             float stepsPerSecond = (stepsL + stepsR) / dur;
-            Log(string.Format("foot touchdowns L {0} R {1} in {2:F1} s = {3:F2} steps/s = {4:F0} steps/min (Blender 138.5 steps/min at 1.15 m/s; the count is +-1 of the window), step length {5:F3} m (Blender 0.498)", stepsL, stepsR, dur, stepsPerSecond, stepsPerSecond * 60f, avgSpeed / Mathf.Max(0.01f, stepsPerSecond)));
+            Log(string.Format("foot touchdowns L {0} R {1} in {2:F1} s = {3:F2} steps/s = {4:F0} steps/min (Blender {6} steps/min at {8} m/s; the count is +-1 of the window), step length {5:F3} m (Blender {7})", stepsL, stepsR, dur, stepsPerSecond, stepsPerSecond * 60f, avgSpeed / Mathf.Max(0.01f, stepsPerSecond), bSteps, bStepLen, bSpeed));
             Log(string.Format("foot slide while flat on the floor (horizontal speed of the ankle within 0.7 mm of its flat height, m/s, {0} frames): median {1:F3}, 90 % of the frames below {2:F3}, 99 % below {3:F3}, largest {4:F3}   (planted = near 0)",
                 slide.Count, Percentile(slide, 0.5f), Percentile(slide, 0.9f), Percentile(slide, 0.99f), slide.Count > 0 ? slide.Max() : 0f));
-            Log(string.Format("foot slide of the shoe SOLE (every shoe vertex within 0.7 mm of the floor, horizontal speed in m/s, {0} samples in {1} frames): median {2:F3}, 90 % below {3:F3}, 99 % below {4:F3}, largest {5:F3}   (Blender planted points: heel 0.5 mm, ball 1.8 mm)",
+            Log(string.Format("foot slide of the shoe SOLE (every shoe vertex within 0.7 mm of the floor, horizontal speed in m/s, {0} samples in {1} frames): median {2:F3}, 90 % below {3:F3}, 99 % below {4:F3}, largest {5:F3}   (Blender planted points: heel 0.4 .. 0.7 mm, ball 2.2 mm)",
                 contactSlide.Count, contactFrames, Percentile(contactSlide, 0.5f), Percentile(contactSlide, 0.9f), Percentile(contactSlide, 0.99f), contactSlide.Count > 0 ? contactSlide.Max() : 0f));
             Log(string.Format("drift of a planted foot (ankle) over one whole flat phase (mm, {0} phases of about {1:F0} ms): median {2:F1}, largest {3:F1}   (Blender: the foot is flat from phase 0.08 to 0.30 = 190 ms)", drift.Count, Percentile(runFrames, 0.5f) / (n / dur) * 1000f, Percentile(drift, 0.5f), drift.Count > 0 ? drift.Max() : 0f));
             Log(string.Format("lowest ankle height above the floor: left {0:F4} right {1:F4} (flat foot {2:F4} / {3:F4}; below = sunk in, far above = floating)", ankleMinL, ankleMinR, ankleRestL, ankleRestR));
-            Log(string.Format("pelvis height range {0:F4} .. {1:F4} m = {2:F1} mm (Blender 23 mm, 0.8586 .. 0.8814)", hipsYmin, hipsYmax, (hipsYmax - hipsYmin) * 1000f));
-            Log(string.Format("pelvis side shift {0:F1} .. {1:F1} mm = +-{2:F1} mm (Blender +-27.8 mm)", hipsXmin * 1000f, hipsXmax * 1000f, (hipsXmax - hipsXmin) * 500f));
+            Log(string.Format("pelvis height range {0:F4} .. {1:F4} m = {2:F1} mm (Blender {3})", hipsYmin, hipsYmax, (hipsYmax - hipsYmin) * 1000f, bPelvis));
+            Log(string.Format("pelvis side shift {0:F1} .. {1:F1} mm = +-{2:F1} mm (Blender +-{3} mm)", hipsXmin * 1000f, hipsXmax * 1000f, (hipsXmax - hipsXmin) * 500f, bSway));
             Log(string.Format("head side position {0:F1} .. {1:F1} mm (spec: within +-5 mm of the centre line), head height range {2:F1} mm", headXmin * 1000f, headXmax * 1000f, (headYmax - headYmin) * 1000f));
-            Log(string.Format("tail tip relative to the hips (character frame): side x {0:F3} .. {1:F3} = {2:F0} mm (Blender -0.080 .. 0.066 = 146 mm), height y {3:F3} .. {4:F3} = {5:F0} mm (Blender -0.007 .. 0.108 = 116 mm), reach z {6:F3} .. {7:F3} (Blender -0.431 .. -0.424); behind the root: z {8:F2} .. {9:F2}, height above the floor {10:F2} .. {11:F2}",
-                tailMin.x, tailMax.x, (tailMax.x - tailMin.x) * 1000f, tailMin.y, tailMax.y, (tailMax.y - tailMin.y) * 1000f, tailMin.z, tailMax.z, tailRootMin.z, tailRootMax.z, tailRootMin.y, tailRootMax.y));
+            Log(string.Format("tail tip relative to the hips (character frame): side x {0:F3} .. {1:F3} = {2:F0} mm, height y {3:F3} .. {4:F3} = {5:F0} mm, reach z {6:F3} .. {7:F3}; behind the root: z {8:F2} .. {9:F2}, height above the floor {10:F2} .. {11:F2}; Blender: {12}",
+                tailMin.x, tailMax.x, (tailMax.x - tailMin.x) * 1000f, tailMin.y, tailMax.y, (tailMax.y - tailMin.y) * 1000f, tailMin.z, tailMax.z, tailRootMin.z, tailRootMax.z, tailRootMin.y, tailRootMax.y, bTail));
+            Log(string.Format("tail tip, the usual swing (2 % .. 98 % of the 10 s, without the rare big excursions): side {0:F0} mm, height {1:F0} mm", (Percentile(tailSide, 0.98f) - Percentile(tailSide, 0.02f)) * 1000f, (Percentile(tailHigh, 0.98f) - Percentile(tailHigh, 0.02f)) * 1000f));
             Log("tail rest curve blend reached " + restBlendMax.ToString("F2") + " (1 = walking J), tail root scale " + (tailRoot != null ? tailRoot.localScale.x.ToString("F2") : "?"));
             Log("spring bones, swing away from the rest direction (deg), Blender simulation in brackets:");
-            Log("   bust, first joints  " + bustFirst.Text + "   (Blender: max 12.0 mean 6.3 on the first joints; the whole bust chain max 31.0 mean 11.6)");
+            Log("   bust, first joints  " + bustFirst.Text + "   (Blender: " + bBust + ")");
             Log("   bust, all joints    " + bust.Text);
-            Log("   ear joints          " + ears.Text + "   (Blender tip: max 1.9 mean 1.2)");
-            Log("   hair, first joints  " + hairFirst.Text + "   (Blender: max 29.1 mean 5.5)");
-            Log("   hair, all joints    " + hair.Text + "   (Blender: max 52.3 mean 7.5)");
+            Log("   ear joints          " + ears.Text + "   (Blender tip: " + bEar + ")");
+            Log("   hair, first joints  " + hairFirst.Text + "   (Blender: " + bHair + ")");
+            Log("   hair, all joints    " + hair.Text);
             Log("blink while walking: max lid " + blinkMax.ToString("F2") + ", blinks started in the run " + (blink != null ? (blink.BlinksStarted - blinkStart0).ToString() : "?"));
             Log("tail tip in hips space every 0.3 s: " + series);
 

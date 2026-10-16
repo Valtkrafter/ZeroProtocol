@@ -19,7 +19,7 @@ namespace ZeroProtocol.Dev
         public string outputDir = "";
         public string bonePosJson = "";
         public string stateName = "Locomotion";
-        public float speedParam = 1.15f;
+        public float speedParam = 0f;                              // 0 = the walk speed of the controller
         public bool finished;
 
         [System.Serializable]
@@ -44,7 +44,7 @@ namespace ZeroProtocol.Dev
                 }
             }
             anim.speed = 0f;
-            anim.SetFloat("Speed", speedParam);
+            anim.SetFloat("Speed", speedParam > 0f ? speedParam : player.walkSpeed);   // exactly the walk clip (the blend tree has idle at 0 and the walk at walkSpeed)
             anim.SetFloat("LocoMult", 1f);
             yield return null;
             int nb = d.bones.Length;
