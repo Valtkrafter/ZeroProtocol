@@ -2,7 +2,7 @@
 
 > Arbeitstitel. Vor einer Veröffentlichung wird ein eigener Titel gewählt, weil es bereits ein Spiel namens "Zero Protocol" (Horror, 2024) gibt.
 
-**Version:** <!-- version -->0.1.0-alpha.1<!-- /version --> · [Releases](https://github.com/Valtkrafter/ZeroProtocol/releases) · [Changelog](CHANGELOG.md) · [Versionsregeln](Docs/VERSIONING.md)
+**Version:** <!-- version -->0.0.2<!-- /version --> · [Releases](https://github.com/Valtkrafter/ZeroProtocol/releases) · [Changelog](CHANGELOG.md) · [Versionsregeln](Docs/VERSIONING.md)
 
 Ein Action-RPG im Stil von *Wuthering Waves*: Echtzeitkampf mit Ausweichen, Perfect Dodge und Konter sowie Charakterwechsel im Kampf. Ziel ist eine offene Welt mit Haupt- und Nebenmissionen.
 
