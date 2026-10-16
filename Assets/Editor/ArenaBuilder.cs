@@ -108,6 +108,8 @@ namespace ZeroProtocol.EditorTools
             player.GetComponent<LockOnSystem>().cameraRig = rig;
             cam.transform.position = new Vector3(0f, 2.2f, -9f);
 
+            PostFxBuilder.Add(cam);                                                      // global volume + motion blur slider
+
             var dirLight = Object.FindFirstObjectByType<Light>();
             if (dirLight != null) { dirLight.shadows = LightShadows.Soft; dirLight.intensity = 1.1f; }
 
