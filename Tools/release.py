@@ -5,10 +5,11 @@ The rules are in Docs/VERSIONING.md. The file VERSION in the project folder is t
 Run it from anywhere, it finds the project folder itself. Needs git and the GitHub CLI (gh) logged in.
 
   python Tools/release.py show                      show the current version and what every command would make of it
-  python Tools/release.py alpha|beta|rc|release     prepare a release in the pre-release channels (see below)
-  python Tools/release.py patch|minor|major         prepare a release from a final version (0.1.0 -> 0.1.1 / 0.2.0 / 1.0.0)
-  python Tools/release.py set 0.3.0-alpha.1         prepare a release with an exact version
-  python Tools/release.py publish --asset FILE ...  push commit and tag, create the GitHub release (pre-release for alpha/beta/rc)
+  python Tools/release.py patch                     NEXT ALPHA NUMBER: 0.0.2 -> 0.0.3 (the normal case, every 0.x.y is "Alpha")
+  python Tools/release.py minor                     bigger milestone: 0.0.3 -> 0.1.0 (major: 0.x -> 1.0.0 = first complete version)
+  python Tools/release.py alpha|beta|rc|release     optional pre-release channels for later (0.5.0-beta.1, 0.5.0-rc.1, release = drop the channel)
+  python Tools/release.py set 0.0.2                 prepare a release with an exact version
+  python Tools/release.py publish --asset FILE --name "Run Update"   push commit and tag, create the GitHub release (pre-release only for alpha/beta/rc channels)
   python Tools/release.py selftest                  check the version arithmetic
 
 "Prepare" = write VERSION, the Unity setting (ProjectSettings.asset) and CHANGELOG.md, commit "chore(release): vX", tag vX.
@@ -78,6 +79,19 @@ def next_version(current, kind, explicit=None):
             return fmt((major, minor, patch, kind, 1))
         raise ReleaseError("cannot go back from %s to %s; use set if you really want that" % (channel, kind))
     raise ReleaseError("unknown command: " + kind)
+
+
+def default_title(version, name=None):
+    """0.0.2 -> 'ZeroProtocol Alpha 0.0.2' (every 0.x.y is Alpha), 1.0.0 -> 'ZeroProtocol 1.0.0', 0.5.0-beta.1 -> 'ZeroProtocol Beta 0.5.0 (beta.1)'."""
+    major, minor, patch, channel, number = parse(version)
+    core = "%d.%d.%d" % (major, minor, patch)
+    if channel:
+        title = "ZeroProtocol %s %s (%s.%d)" % ("RC" if channel == "rc" else channel.capitalize(), core, channel, number)
+    elif major == 0:
+        title = "ZeroProtocol Alpha " + core
+    else:
+        title = "ZeroProtocol " + core
+    return title + (" – " + name if name else "")
 
 
 def git(*args):
@@ -173,7 +187,7 @@ def prepare(kind, explicit, dry, trailers):
     print("  python Tools/release.py publish --asset Build/ZeroProtocol-%s-win-x64.zip" % new)
 
 
-def publish(assets, title, notes_file, dry):
+def publish(assets, title, name, notes_file, dry):
     version = current_version()
     channel = parse(version)[3]
     tag = "v" + version
@@ -196,8 +210,8 @@ def publish(assets, title, notes_file, dry):
         temp.write(body)
         temp.close()
         notes = Path(temp.name)
-    title = title or ("ZeroProtocol " + tag)
-    command = ["gh", "release", "create", tag, "--title", title, "--notes-file", str(notes), "--verify-tag"]
+    title = title or default_title(version, name)
+    command =["gh", "release", "create", tag, "--title", title, "--notes-file", str(notes), "--verify-tag"]
     if channel:
         command.append("--prerelease")
     command += [str(a) for a in assets]
@@ -225,6 +239,10 @@ def show():
 
 def selftest():
     good = [
+        ("0.0.1", "patch", None, "0.0.2"),
+        ("0.0.2", "patch", None, "0.0.3"),
+        ("0.0.9", "minor", None, "0.1.0"),
+        ("0.0.1", "set", "0.0.2", "0.0.2"),
         ("0.0.1-alpha.1", "set", "0.1.0-alpha.1", "0.1.0-alpha.1"),
         ("0.1.0-alpha.1", "alpha", None, "0.1.0-alpha.2"),
         ("0.1.0-alpha.2", "beta", None, "0.1.0-beta.1"),
@@ -259,7 +277,8 @@ def main():
     parser.add_argument("command", choices=["show", "alpha", "beta", "rc", "release", "patch", "minor", "major", "set", "publish", "selftest"])
     parser.add_argument("value", nargs="?", help="the version for 'set'")
     parser.add_argument("--asset", action="append", default=[], help="file to attach to the GitHub release (publish)")
-    parser.add_argument("--title", help="release title (publish), default: ZeroProtocol vX")
+    parser.add_argument("--name", help="short release name (publish), e.g. 'Run Update' -> title 'ZeroProtocol Alpha 0.0.2 - Run Update'")
+    parser.add_argument("--title", help="complete release title (publish), default: made from the version and --name")
     parser.add_argument("--notes-file", help="release text (publish), default: Docs/releases/vX.md or the CHANGELOG.md section")
     parser.add_argument("--trailer", action="append", default=[], help="extra line at the end of the release commit message")
     parser.add_argument("--dry-run", action="store_true", help="show what would happen, change nothing")
@@ -270,7 +289,7 @@ def main():
         if args.command == "show":
             show()
         elif args.command == "publish":
-            publish(args.asset, args.title, args.notes_file, args.dry_run)
+            publish(args.asset, args.title, args.name, args.notes_file, args.dry_run)
         else:
             prepare(args.command, args.value, args.dry_run, args.trailer)
     except ReleaseError as e:

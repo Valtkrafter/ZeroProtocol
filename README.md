@@ -37,7 +37,7 @@ Fertige Alpha-Builds stehen unter [Releases](https://github.com/Valtkrafter/Zero
 
 ## Versionen und Releases
 
-Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/) (zum Beispiel `0.1.0-alpha.1`). Die Regeln stehen in [Docs/VERSIONING.md](Docs/VERSIONING.md), die Änderungen im [CHANGELOG](CHANGELOG.md). Ein Release entsteht mit `python Tools/release.py`.
+Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/): jede Alpha-Veröffentlichung zählt die letzte Ziffer hoch (`0.0.1`, `0.0.2`, `0.0.3` ...), alle `0.x.y` sind Alpha, `1.0.0` ist die erste vollständige Version. Die Regeln stehen in [Docs/VERSIONING.md](Docs/VERSIONING.md), die Änderungen im [CHANGELOG](CHANGELOG.md). Ein Release entsteht mit `python Tools/release.py`.
 
 ## Technik
 

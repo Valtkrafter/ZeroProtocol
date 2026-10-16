@@ -16,7 +16,7 @@ namespace ZeroProtocol.Player
         void Start()
         {
             if (captureCursor) SetCursor(true);
-            Debug.Log("[ZeroProtocol] version " + Application.version + ", Unity " + Application.unityVersion + ", scene " + gameObject.scene.name
+            Debug.Log("[ZeroProtocol] version " + VersionLabel() + ", Unity " + Application.unityVersion + ", scene " + gameObject.scene.name
                       + ", " + SystemInfo.graphicsDeviceName + " (" + SystemInfo.graphicsDeviceType + "), " + Screen.width + "x" + Screen.height);
         }
 
@@ -42,7 +42,14 @@ namespace ZeroProtocol.Player
                 versionStyle = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.LowerRight, fontSize = 11 };
                 versionStyle.normal.textColor = new Color(1f, 1f, 1f, 0.55f);
             }
-            GUI.Label(new Rect(Screen.width - 312, Screen.height - 28, 300, 22), "Zero Protocol " + Application.version, versionStyle);
+            GUI.Label(new Rect(Screen.width - 312, Screen.height - 28, 300, 22), "Zero Protocol " + VersionLabel(), versionStyle);
+        }
+
+        /// <summary>"0.0.2" -> "Alpha 0.0.2" (every 0.x.y is Alpha, see Docs/VERSIONING.md); a version with a channel (0.5.0-beta.1) and 1.0.0 and up stay as they are.</summary>
+        static string VersionLabel()
+        {
+            string v = Application.version;
+            return v.StartsWith("0.") && !v.Contains("-") ? "Alpha " + v : v;
         }
     }
 }
