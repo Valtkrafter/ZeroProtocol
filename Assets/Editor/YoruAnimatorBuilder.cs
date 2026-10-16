@@ -69,9 +69,11 @@ namespace ZeroProtocol.EditorTools
         }
 
         // ground speeds (m/s) the walk and run cycles were authored for; set when the clips are made
-        // (walk: Blender/Yoru_Walk_gait.json speed 1.15, stride 0.997 m; the same number is YoruController.walkSpeed)
-        const float WalkSpeed = 1.15f;
-        const float RunSpeed = 4.4f;
+        // (walk: Blender/Yoru_Walk_gait.json speed 1.50 m/s, stride 1.05 m, cycle 0.7 s = 171 steps/min; the same number is YoruController.walkSpeed.
+        //  The first walk was 1.15 m/s, the user found it too slow)
+        const float WalkSpeed = 1.5f;
+        // (run: Blender/Yoru_Run_gait.json speed 5.0 m/s, stride 3.0 m, cycle 0.6 s = 200 steps/min; the same number is YoruController.runSpeed)
+        const float RunSpeed = 5f;
 
         static AnimationClip Load(string name)
         {
