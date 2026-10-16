@@ -25,6 +25,13 @@ namespace ZeroProtocol.CameraSystem
         public float maxPitch = 62f;
         public float followSmoothing = 18f;
 
+        [Header("Speed feel")]
+        [Tooltip("The field of view opens by this many degrees at the sprint speed (the world rushes past), and the camera drops back a little. Smooth, no pop between walk and sprint.")]
+        public float sprintFovBoost = 6f;
+        public float sprintDistanceBoost = 0.35f;
+        [Tooltip("Seconds the speed feel needs to follow the speed.")]
+        public float speedFeelTime = 0.35f;
+
         [Header("Collision")]
         public float collisionRadius = 0.25f;
         public float collisionPadding = 0.1f;
@@ -37,6 +44,9 @@ namespace ZeroProtocol.CameraSystem
         public float Yaw { get { return yaw; } }
 
         float yaw, pitch = 15f;
+        float baseFov, speedFeel;
+        Camera cam;
+        YoruController mover;
         float currentDistance;
         Vector3 smoothedPivot;
         readonly RaycastHit[] hits = new RaycastHit[8];
@@ -50,6 +60,9 @@ namespace ZeroProtocol.CameraSystem
             }
             currentDistance = distance;
             if (input == null && target != null) input = target.GetComponent<GameInput>();
+            cam = GetComponent<Camera>();
+            if (cam != null) baseFov = cam.fieldOfView;
+            if (target != null) mover = target.GetComponent<YoruController>();
         }
 
         void LateUpdate()
@@ -62,6 +75,11 @@ namespace ZeroProtocol.CameraSystem
             {
                 distance = Mathf.Clamp(distance + input.Zoom, minDistance, maxDistance);
             }
+
+            // speed feel: 0 at walking speed, 1 at the sprint speed (the dash counts as sprint, the dodge is short)
+            float feelTarget = mover != null ? mover.SprintBlend : 0f;
+            speedFeel = Mathf.Lerp(speedFeel, feelTarget, 1f - Mathf.Exp(-dt / Mathf.Max(0.02f, speedFeelTime)));
+            if (cam != null && baseFov > 0f) cam.fieldOfView = baseFov + sprintFovBoost * speedFeel;
 
             Vector3 pivot = target.position + Vector3.up * pivotHeight;
             smoothedPivot = Vector3.Lerp(smoothedPivot, pivot, 1f - Mathf.Exp(-followSmoothing * dt));
@@ -90,8 +108,8 @@ namespace ZeroProtocol.CameraSystem
             Vector3 origin = smoothedPivot + right * shoulderOffset;
 
             // pull in when something is between the pivot and the wanted camera spot
-            float wanted = distance;
-            int n = Physics.SphereCastNonAlloc(origin, collisionRadius, back, hits, distance + collisionPadding,
+            float wanted = distance + sprintDistanceBoost * speedFeel;
+            int n = Physics.SphereCastNonAlloc(origin, collisionRadius, back, hits, wanted + collisionPadding,
                                                ~0, QueryTriggerInteraction.Ignore);
             float nearest = wanted;
             for (int i = 0; i < n; i++)

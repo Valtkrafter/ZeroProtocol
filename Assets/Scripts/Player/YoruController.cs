@@ -4,11 +4,12 @@ using UnityEngine;
 namespace ZeroProtocol.Player
 {
     /// <summary>
-    /// Third-person movement for Yoru: camera-relative walk and run, jump (with coyote time and input buffer),
-    /// and a short dash. Feeds the Animator (see YoruAnimatorBuilder for the meaning of the parameters);
+    /// Third-person movement for Yoru: camera-relative walk and sprint, jump (with coyote time and input buffer),
+    /// and a short dodge (the dash). Feeds the Animator (see YoruAnimatorBuilder for the meaning of the parameters);
     /// parameters that the Animator does not have are skipped.
-    /// Moving (W, or the stick) plays the walk: the clip Yoru_Walk was made for walkSpeed. There is no run yet (Yoru_Run comes later,
-    /// then Ctrl and the other modes get their own animations). A light stick tilt walks proportionally slower.
+    /// Moving (W, or the stick) plays the walk: the clip Yoru_Walk was made for walkSpeed. A light stick tilt walks proportionally slower.
+    /// Shift: a press is the DODGE (the dash starts at once), holding it on goes into the SPRINT as soon as the dodge is over (sprintHoldDelay);
+    /// letting go ends the sprint. Ctrl is reserved for its own animation later.
     /// The ground speed wobbles a little within every step, like the speed of a real walker (see gaitSpeedVariation).
     /// </summary>
     [RequireComponent(typeof(CharacterController), typeof(GameInput))]
@@ -16,7 +17,7 @@ namespace ZeroProtocol.Player
     {
         [Header("Walk")]
         [Tooltip("Mean ground speed (m/s) of the walk cycle: Blender/Yoru_Walk_gait.json speed, the same number as WalkSpeed in YoruAnimatorBuilder. This is the speed of W.")]
-        public float walkSpeed = 1.15f;
+        public float walkSpeed = 1.5f;
         [Tooltip("Stick tilt (pad) that already gives the full walking speed; a lighter tilt walks proportionally slower. The keyboard always gives 1.")]
         [Range(0.2f, 0.9f)] public float walkTilt = 0.5f;
         [Tooltip("Seconds the animator speed needs to follow the real speed (no pop between idle and walk).")]
@@ -26,14 +27,20 @@ namespace ZeroProtocol.Player
         [Tooltip("Phase of the walk cycle with the highest speed: where the pelvis is lowest (heel strike).")]
         public float gaitSpeedPhase = 0f;
 
-        [Header("Run (not made yet)")]
-        [Tooltip("Reserved for the run animation: nothing moves at this speed yet, only the dash uses it as the largest animator speed.")]
-        public float runSpeed = 4.4f;
+        [Header("Sprint (hold Shift)")]
+        [Tooltip("Ground speed (m/s) of the sprint = the speed of the run clip (Blender/Yoru_Run_gait.json). It is also the largest animator speed of the dodge.")]
+        public float runSpeed = 5f;
+        [Tooltip("Seconds Shift has to be held before the sprint starts: the length of the dodge, so the sprint takes over when the dodge is over. A shorter press is only the dodge.")]
+        public float sprintHoldDelay = 0.24f;
         public float acceleration = 30f;
         public float deceleration = 40f;
         public float turnSpeed = 900f;
-        [Tooltip("Ground speed (m/s) at which the fastest locomotion clip plays at normal speed: 1.15 = the walk clip, set 4.4 when Yoru_Run exists.")]
-        public float clipRunSpeed = 1.15f;
+        [Tooltip("The ground speed of the sprint is not constant either: it dips by this share of runSpeed while a foot is on the ground (slowest at mid stance) and is steady in the flight. Same number as speed_var of the Blender run (Blender/Yoru_Run_gait.json speed_variation); the planted feet of the clip depend on it.")]
+        [Range(0f, 0.15f)] public float runGaitSpeedVariation = 0.08f;
+        [Tooltip("Share of the run cycle a foot is on the ground (PH_TO of the Blender run, 8 of 36 frames).")]
+        public float runStanceShare = 0.2222f;
+        [Tooltip("Ground speed (m/s) at which the fastest locomotion clip plays at normal speed: the sprint clip Yoru_Run (Blender/Yoru_Run_gait.json speed 5.0).")]
+        public float clipRunSpeed = 5f;
         [Tooltip("Largest playback speed factor of the locomotion clips.")]
         public float maxLocoMult = 2f;
 
@@ -59,9 +66,13 @@ namespace ZeroProtocol.Player
         public bool IsDashing { get { return dashTimer > 0f; } }
         /// <summary>True while she is walking on purpose (a move input, not a dash).</summary>
         public bool IsWalking { get; private set; }
+        /// <summary>True while she sprints: Shift held for sprintHoldDelay (the dodge is over) and a move input.</summary>
+        public bool IsSprinting { get; private set; }
         /// <summary>Walk cycle phase 0..1 (0 = right heel strike) as the animator plays it, and the factor the ground speed has right now (1 = mean speed).</summary>
         public float GaitPhase { get; private set; }
         public float GaitSpeedFactor { get; private set; } = 1f;
+        /// <summary>0 = at walking speed or slower, 1 = at the sprint speed (how much of the sprint is in the pose).</summary>
+        public float SprintBlend { get { return Mathf.Clamp01((HorizontalSpeed - walkSpeed) / Mathf.Max(0.01f, runSpeed - walkSpeed)); } }
         /// <summary>Playback speed factor of the locomotion clips (1 = as authored).</summary>
         public float LocoMultiplier { get; private set; } = 1f;
         public Vector3 Velocity { get { return horizontalVelocity + Vector3.up * verticalVelocity; } }
@@ -71,7 +82,7 @@ namespace ZeroProtocol.Player
         GameInput input;
         Vector3 horizontalVelocity;
         float verticalVelocity;
-        float coyoteTimer, jumpBufferTimer, dashTimer, dashCooldownTimer;
+        float coyoteTimer, jumpBufferTimer, dashTimer, dashCooldownTimer, shiftHeldTime;
         float airTime;
         bool jumpedThisAir, animGroundedPrev = true, runJump;
         Vector3 dashDirection;
@@ -112,6 +123,7 @@ namespace ZeroProtocol.Player
             jumpBufferTimer = input.JumpPressed ? jumpBuffer : jumpBufferTimer - dt;
             dashCooldownTimer -= dt;
             if (dashTimer > 0f) dashTimer -= dt;
+            shiftHeldTime = input.SprintHeld ? shiftHeldTime + dt : 0f;      // a press is the dodge, holding it on is the sprint
             if (IsGrounded) { airTime = 0f; if (verticalVelocity <= 0f) jumpedThisAir = false; }
             else airTime += dt;
 
@@ -126,6 +138,7 @@ namespace ZeroProtocol.Player
             // horizontal velocity
             if (IsDashing)
             {
+                IsSprinting = false;
                 float t = 1f - dashTimer / dashDuration;                 // 0 -> 1
                 float ease = Mathf.Lerp(1f, 0.35f, t * t);               // fast start, soft end
                 horizontalVelocity = dashDirection * (dashSpeed * ease);
@@ -134,6 +147,7 @@ namespace ZeroProtocol.Player
             else
             {
                 float tilt = wish.magnitude;                              // 0..1, the keyboard always gives 1
+                IsSprinting = input.SprintHeld && shiftHeldTime >= sprintHoldDelay && tilt > 0.1f;
                 float wanted = WantedSpeed(tilt);
                 IsWalking = tilt > 0.1f;
                 Vector3 target = tilt > 0.0001f ? wish / tilt * wanted : Vector3.zero;
@@ -166,23 +180,34 @@ namespace ZeroProtocol.Player
 
         float JumpSpeed { get { return Mathf.Sqrt(2f * -gravity * jumpHeight); } }
 
-        /// <summary>Wanted ground speed for a stick tilt (0..1): the walking speed from a tilt of walkTilt on, slower below (W = tilt 1 = walk).</summary>
+        /// <summary>Wanted ground speed for a stick tilt (0..1): the walking speed from a tilt of walkTilt on, slower below (W = tilt 1); while sprinting always the sprint speed.</summary>
         float WantedSpeed(float tilt)
         {
             if (tilt <= 0.0001f) return 0f;
+            if (IsSprinting) return runSpeed;                                         // the sprint is one speed: between the walk clip and the run clip the feet slide (measured, LocomotionQualityTest)
             return walkSpeed * Mathf.Min(1f, tilt / walkTilt);
         }
 
         /// <summary>
-        /// Factor of the ground speed at the phase of the walk cycle the animator is at: 1 + gaitSpeedVariation * cos(4 pi (phase - gaitSpeedPhase)),
-        /// weighted by how much of the walk clip is in the pose (the blend tree weight, speed / walkSpeed). The animator phase is the one of the last frame.
+        /// Factor of the ground speed at the phase of the gait cycle the animator is at (both clips start at the right touchdown), weighted by how much
+        /// of each clip is in the pose (the blend tree weights):
+        ///   walk  1 + gaitSpeedVariation * cos(4 pi (phase - gaitSpeedPhase))
+        ///   run   1 + runGaitSpeedVariation * (4 b / pi - dip),  dip = sin(pi q / b) while a foot is on the ground (q = time since its touchdown, period half a cycle, b = runStanceShare), 0 in the flight
+        /// The animator phase is the one of the last frame.
         /// </summary>
         float GaitFactor()
         {
-            if (animator == null || gaitSpeedVariation <= 0f) return 1f;
+            if (animator == null) return 1f;
             GaitPhase = Mathf.Repeat(animator.GetCurrentAnimatorStateInfo(0).normalizedTime, 1f);
-            float weight = Mathf.Clamp01(HorizontalSpeed / Mathf.Max(0.01f, walkSpeed));
-            return 1f + gaitSpeedVariation * weight * Mathf.Cos(4f * Mathf.PI * (GaitPhase - gaitSpeedPhase));
+            float speed = HorizontalSpeed;
+            float wRun = Mathf.Clamp01((speed - walkSpeed) / Mathf.Max(0.01f, runSpeed - walkSpeed));
+            float wWalk = speed <= walkSpeed ? Mathf.Clamp01(speed / Mathf.Max(0.01f, walkSpeed)) : 1f - wRun;
+            float walkTerm = gaitSpeedVariation * Mathf.Cos(4f * Mathf.PI * (GaitPhase - gaitSpeedPhase));
+            float b = Mathf.Max(0.05f, runStanceShare);
+            float q = Mathf.Repeat(GaitPhase, 0.5f);
+            float dip = q < b ? Mathf.Sin(Mathf.PI * q / b) : 0f;
+            float runTerm = runGaitSpeedVariation * (4f * b / Mathf.PI - dip);
+            return 1f + wWalk * walkTerm + wRun * runTerm;
         }
 
         Vector3 CameraRelative(Vector2 stick)

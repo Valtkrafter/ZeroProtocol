@@ -6,8 +6,8 @@ namespace ZeroProtocol.Player
     /// <summary>
     /// Owns every gameplay input action. Other scripts only read from here, so a menu or a cutscene
     /// can switch the whole player input off in one place (InputEnabled).
-    /// Keyboard + mouse like Wuthering Waves (WASD, mouse camera, Space jump, Shift dash, wheel click lock-on)
-    /// plus a gamepad fallback.
+    /// Keyboard + mouse like Wuthering Waves (WASD, mouse camera, Space jump, Shift = dodge when tapped and sprint when held,
+    /// wheel click lock-on) plus a gamepad fallback.
     /// </summary>
     [DefaultExecutionOrder(-100)]
     public class GameInput : MonoBehaviour
@@ -25,7 +25,10 @@ namespace ZeroProtocol.Player
         /// <summary>Mouse wheel / trigger zoom, positive = zoom out.</summary>
         public float Zoom { get; private set; }
         public bool JumpPressed { get; private set; }
+        /// <summary>The frame in which Shift (pad: east button) went down: the dodge starts at once, a short press never waits for a hold.</summary>
         public bool DashPressed { get; private set; }
+        /// <summary>Shift (pad: east button) is held down: after the dodge is over it goes on into the sprint (see YoruController.sprintHoldDelay).</summary>
+        public bool SprintHeld { get; private set; }
         public bool LockOnPressed { get; private set; }
         /// <summary>Held: Ctrl. Reserved, it does nothing yet: Ctrl will get its own animation later (W already plays the walk).</summary>
         public bool CtrlHeld { get; private set; }
@@ -33,8 +36,8 @@ namespace ZeroProtocol.Player
         /// <summary>Test hooks: when set, they replace the real devices (used by automated checks).</summary>
         public Vector2? MoveOverride;
         public bool JumpOverride, DashOverride, LockOnOverride;
-        /// <summary>Stays on until it is set back (a held Ctrl key).</summary>
-        public bool CtrlOverride;
+        /// <summary>Stay on until they are set back (a held Ctrl key, a held Shift key).</summary>
+        public bool CtrlOverride, SprintOverride;
 
         InputAction move, look, zoom, jump, dash, lockOn, ctrl;
 
@@ -85,7 +88,7 @@ namespace ZeroProtocol.Player
             if (!InputEnabled)
             {
                 Move = Vector2.zero; Look = Vector2.zero; Zoom = 0f;
-                JumpPressed = DashPressed = LockOnPressed = CtrlHeld = false;
+                JumpPressed = DashPressed = LockOnPressed = CtrlHeld = SprintHeld = false;
                 return;
             }
 
@@ -93,6 +96,7 @@ namespace ZeroProtocol.Player
             CtrlHeld = ctrl.IsPressed() || CtrlOverride;
             JumpPressed = jump.WasPressedThisFrame() || JumpOverride;
             DashPressed = dash.WasPressedThisFrame() || DashOverride;
+            SprintHeld = dash.IsPressed() || SprintOverride;
             LockOnPressed = lockOn.WasPressedThisFrame() || LockOnOverride;
             JumpOverride = DashOverride = LockOnOverride = false;
 

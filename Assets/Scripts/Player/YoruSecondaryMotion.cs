@@ -41,10 +41,22 @@ namespace ZeroProtocol.Player
         public float restBlendTime = 0.35f;
         [Tooltip("Sideways swing of the tail base against the pelvis yaw, degrees at full pelvis yaw (Blender tail_lat 6, 9 here makes the physical tail swing as far as the authored one).")]
         public float walkYaw = 9f;
-        [Tooltip("Stiffness of the tail spring while she walks (the standing tail uses 'stiffness'). Measured against the Blender walk: with 1.5 the tip swings 138 mm sideways and 119 mm up and down (Blender 146 / 116).")]
-        public float walkStiffness = 1.5f;
+        [Tooltip("Stiffness of the tail spring while she walks (the standing tail uses 'stiffness'). Tuned with TailTuneTest against the Blender walk at 1.5 m/s (171 steps/min): the tip swings about 150 mm sideways and 115 mm up and down in a 10 s window (Blender 147 / 107). The first, slower walk (138 steps/min) needed 1.5.")]
+        public float walkStiffness = 2.2f;
         [Tooltip("Nod of the tail base against the pelvis bounce, degrees (Blender tail_vert).")]
         public float walkPitch = 3f;
+
+        [Header("Tail while sprinting (Blender run: an aerodynamic arch with travelling waves)")]
+        [Tooltip("Bend per tail joint in the sprint (same convention as restPitch): rises +30 degrees over the rump and levels out towards the tip. Blender/Yoru_Run_tail.json runRestPitch.")]
+        public float[] runRestPitch = { 24f, -3f, -5f, -7f, -7f, -6f, 0f, 0f };
+        [Tooltip("Sideways swing of the tail base against the pelvis yaw in the sprint, degrees at full pelvis yaw (like walkYaw). Tuned with TailTuneTest (sprint mode) against the Blender sprint: yaw 18 / stiffness 3.5 / drag 0.65 gives a tip swing of 181 mm sideways and 179 mm up and down (Blender 176 / 110; the height does not come lower in any setting of the sweep).")]
+        public float sprintYaw = 18f;
+        [Tooltip("Stiffness of the tail spring in the sprint.")]
+        public float sprintStiffness = 3.5f;
+        [Tooltip("Nod of the tail base against the pelvis bounce in the sprint, degrees.")]
+        public float sprintPitch = 2f;
+        [Tooltip("Damping of the tail spring in the sprint (the standing and walking tail use 'drag').")]
+        [Range(0f, 1f)] public float sprintDrag = 0.65f;
 
         [Header("Tail physics")]
         public float gravity = 0.035f;
@@ -57,8 +69,8 @@ namespace ZeroProtocol.Player
         public float swayPitch = 4f;
 
         [Header("Movement")]
-        public float runYaw = 9f;
-        public float runLift = 8f;
+        public float runYaw = 0f;
+        public float runLift = 0f;
         public float airLiftRising = 12f;
         public float airLiftFalling = 20f;
         public float dashPitch = 18f;
@@ -97,15 +109,32 @@ namespace ZeroProtocol.Player
         public float earStiffness = 2.2f;
         public float earDrag = 0.30f;
 
-        /// <summary>Length of the walk cycle in the Blender clip: 26 frames at 30 fps.</summary>
-        const float WalkCycleSeconds = 26f / 30f;
-        /// <summary>Peak vertical speed of the pelvis in the walk (m/s), used to normalise the nod of the tail.</summary>
-        const float PelvisPeakSpeed = 0.17f;
+        [Header("Spring bones in the sprint (Blender/Yoru_Run_gait.json spring_params; blended in with the sprint)")]
+        [Tooltip("The bust needs more stiffness at the sprint, 0.4 would swing it 94 degrees.")]
+        public float bustStiffnessSprint = 0.80f;
+        public float hairDragSprint = 0.40f;
+        public float earStiffnessSprint = 1.6f;
+        public float earDragSprint = 0.14f;
+        [Tooltip("Headwind of the sprint (push in m/s at the sprint speed, backwards and a little up): hair 0.19, ears 0.30 in the Blender run.")]
+        public float windHairSprint = 0.19f;
+        public float windEarSprint = 0.30f;
+        [Range(0f, 1f)] public float windLift = 0.25f;
+
+        /// <summary>Length of the walk cycle in the Blender clip: 21 frames at 30 fps (the first, slower walk had 26).</summary>
+        const float WalkCycleSeconds = 21f / 30f;
+        /// <summary>Peak vertical speed of the pelvis in the walk (m/s), used to normalise the nod of the tail: 11.4 mm * 4 pi / 0.7 s.</summary>
+        const float PelvisPeakSpeed = 0.205f;
+        /// <summary>Peak vertical speed of the pelvis in the sprint (m/s): 11.4 mm per frame at 60 fps (Blender run).</summary>
+        const float RunPelvisPeakSpeed = 0.68f;
 
         Transform hips, driver;
         VRMSpringBone tailSpring;
         readonly System.Collections.Generic.List<VRMSpringBone> hairSprings = new System.Collections.Generic.List<VRMSpringBone>();
         readonly System.Collections.Generic.List<VRMSpringBone> otherSprings = new System.Collections.Generic.List<VRMSpringBone>();
+        readonly System.Collections.Generic.List<VRMSpringBone> bustSprings = new System.Collections.Generic.List<VRMSpringBone>();
+        readonly System.Collections.Generic.List<VRMSpringBone> earSprings = new System.Collections.Generic.List<VRMSpringBone>();
+        float sprintK;                      // 0 = walk values, 1 = sprint values of the springs (smoothed sprint blend)
+        float runBlend, runBlendApplied;    // tail rest curve: 0 = walking J, 1 = sprint arch
         readonly System.Collections.Generic.List<VRMSpringBone> allSprings = new System.Collections.Generic.List<VRMSpringBone>();
         float springClock;
         YoruController controller;
@@ -145,6 +174,8 @@ namespace ZeroProtocol.Player
             {
                 if (sb.m_comment == "CatTail") tailSpring = sb;
                 else if (sb.m_comment == "Hair") hairSprings.Add(sb);
+                else if (sb.m_comment == "Bust") { bustSprings.Add(sb); otherSprings.Add(sb); }
+                else if (sb.m_comment == "CatEar") earSprings.Add(sb);
                 else otherSprings.Add(sb);
                 if (tuneSprings) TuneSpring(sb);
                 sb.m_updateType = VRMSpringBone.SpringBoneUpdateType.Manual;               // stepped from LateUpdate below at a fixed rate
@@ -161,7 +192,7 @@ namespace ZeroProtocol.Player
             tailJoints = joints.ToArray();
             tailBaseRotation = new Quaternion[tailJoints.Length];
             for (int i = 0; i < tailJoints.Length; i++) tailBaseRotation[i] = tailJoints[i].localRotation;
-            ApplyTailRest(0f, false);
+            ApplyTailRest(0f, 0f, false);
 
             // driver between hips and tail root, so the base of the tail can be animated
             driver = new GameObject("CatTailDriver").transform;
@@ -223,12 +254,13 @@ namespace ZeroProtocol.Player
         /// rotations they find at Setup as their rest pose, so while the shape changes Setup(true) is called with the new rest pose
         /// (the physics restarts from the shape, which is no problem during the short blend).
         /// </summary>
-        void ApplyTailRest(float k, bool resetSpring)
+        void ApplyTailRest(float k, float kRun, bool resetSpring)
         {
             for (int i = 0; i < tailJoints.Length; i++)
             {
                 float walk = i < walkRestPitch.Length ? walkRestPitch[i] : restPitch[i];
-                float p = Mathf.Lerp(restPitch[i], walk, k);
+                float run = i < runRestPitch.Length ? runRestPitch[i] : walk;
+                float p = Mathf.Lerp(Mathf.Lerp(restPitch[i], walk, k), run, kRun);
                 tailJoints[i].localRotation = Quaternion.Euler(p, 0f, 0f) * tailBaseRotation[i];
             }
             if (resetSpring && tailSpring != null) tailSpring.Setup(true);
@@ -281,7 +313,7 @@ namespace ZeroProtocol.Player
             float time = Time.time + phase;
 
             float speed = controller != null ? controller.HorizontalSpeed : 0f;
-            float walkRef = controller != null ? controller.walkSpeed : 1.15f;
+            float walkRef = controller != null ? controller.walkSpeed : 1.5f;
             float runRef = controller != null ? controller.runSpeed : 4.4f;
             float walkN = Mathf.Clamp01(speed / walkRef);                                           // 0 standing .. 1 at walking speed
             float runN = Mathf.Clamp01((speed - walkRef) / Mathf.Max(0.1f, runRef - walkRef));      // 0 at walking speed .. 1 running
@@ -292,12 +324,17 @@ namespace ZeroProtocol.Player
             // tail rest curve: standing C <-> walking J
             float restTarget = speed > 0.3f * walkRef ? 1f : 0f;
             restBlend = Mathf.MoveTowards(restBlend, restTarget, dt / Mathf.Max(0.05f, restBlendTime));
-            if (Mathf.Abs(restBlend - restBlendApplied) > 0.002f)
+            float runTarget = speed > walkRef + 0.55f * (runRef - walkRef) ? 1f : 0f;                // the arch only in the real sprint
+            runBlend = Mathf.MoveTowards(runBlend, runTarget, dt / Mathf.Max(0.05f, restBlendTime));
+            if (Mathf.Abs(restBlend - restBlendApplied) > 0.002f || Mathf.Abs(runBlend - runBlendApplied) > 0.002f)
             {
-                ApplyTailRest(restBlend, true);
+                ApplyTailRest(restBlend, runBlend, true);
                 restBlendApplied = restBlend;
+                runBlendApplied = runBlend;
             }
-            tailSpring.m_stiffnessForce = Mathf.Lerp(stiffness, walkStiffness, restBlend);
+            tailSpring.m_stiffnessForce = Mathf.Lerp(Mathf.Lerp(stiffness, walkStiffness, restBlend), sprintStiffness, runBlend);
+            tailSpring.m_dragForce = Mathf.Lerp(drag, sprintDrag, runBlend);
+            UpdateSpringBlend(dt);
 
             // how fast the pelvis is going up (smoothed) and how far it is turned against the character, for the walking swing of the tail base
             float hy = hips.position.y;
@@ -313,10 +350,10 @@ namespace ZeroProtocol.Player
             float lazy = (Mathf.Sin(6.2832f * time / swayPeriod) + 0.35f * Mathf.Sin(6.2832f * time / (swayPeriod * 0.5f) + 1.3f)) / 1.35f;
             float standing = 1f - walkN;
             float targetYaw = swayYaw * standing * lazy
-                              - walkYaw * walkN * Mathf.Clamp(pelvisYaw / 8f, -1.5f, 1.5f)
+                              - Mathf.Lerp(walkYaw, sprintYaw, runBlend) * walkN * Mathf.Clamp(pelvisYaw / 8f, -1.5f, 1.5f)
                               + runYaw * runN * Mathf.Sin(6.2832f * gaitPhase);
             float targetPitch = baseLift + swayPitch * standing * Mathf.Sin(6.2832f * 2f * time / swayPeriod + 0.8f)
-                                - walkPitch * walkN * Mathf.Clamp(bounceSpeed / PelvisPeakSpeed, -1.5f, 1.5f) + runLift * runN;
+                                - Mathf.Lerp(walkPitch, sprintPitch, runBlend) * walkN * Mathf.Clamp(bounceSpeed / Mathf.Lerp(PelvisPeakSpeed, RunPelvisPeakSpeed, runBlend), -1.5f, 1.5f) + runLift * runN;
             if (!grounded) targetPitch += vy > 0f ? airLiftRising : airLiftFalling;
             if (dash) { targetPitch = dashPitch; targetYaw = 0f; }
 
@@ -339,7 +376,12 @@ namespace ZeroProtocol.Player
             Vector3 v = controller != null ? controller.Velocity : Vector3.zero;
             v.y *= verticalWindFactor;
             wind = Vector3.SmoothDamp(wind, -v, ref windVel, 0.08f);
-            foreach (var sb in hairSprings) sb.ExternalForce = wind * windHair;
+            // the headwind grows into the sprint push of the Blender run (hair 0.19, ears 0.30 m/s at 5 m/s, a share of it lifting)
+            float hairGain = Mathf.Lerp(windHair, windHairSprint / Mathf.Max(0.1f, runRef), sprintK);
+            float earGain = Mathf.Lerp(windOther, windEarSprint / Mathf.Max(0.1f, runRef), sprintK);
+            Vector3 lift = Vector3.up * (wind.magnitude * windLift * sprintK);
+            foreach (var sb in hairSprings) sb.ExternalForce = (wind + lift) * hairGain;
+            foreach (var sb in earSprings) sb.ExternalForce = (wind + lift) * earGain;
             foreach (var sb in otherSprings) sb.ExternalForce = wind * windOther;
 
             Vector3 force = wind * windTail;
@@ -350,6 +392,21 @@ namespace ZeroProtocol.Player
             }
             if (kickTimer > 0f) force += Vector3.down * (landKick * (kickTimer / 0.18f));
             tailSpring.ExternalForce = force;
+        }
+
+        /// <summary>Blends the spring values between the walk and the sprint values of the Blender simulations (the springs read their values at every step).</summary>
+        void UpdateSpringBlend(float dt)
+        {
+            float target = controller != null ? controller.SprintBlend : 0f;
+            sprintK = Mathf.Lerp(sprintK, target, 1f - Mathf.Exp(-dt / 0.25f));
+            if (!tuneSprings) return;
+            foreach (var sb in bustSprings) sb.m_stiffnessForce = Mathf.Lerp(bustStiffness, bustStiffnessSprint, sprintK);
+            foreach (var sb in hairSprings) sb.m_dragForce = Mathf.Lerp(hairDrag, hairDragSprint, sprintK);
+            foreach (var sb in earSprings)
+            {
+                sb.m_stiffnessForce = Mathf.Lerp(earStiffness, earStiffnessSprint, sprintK);
+                sb.m_dragForce = Mathf.Lerp(earDrag, earDragSprint, sprintK);
+            }
         }
 
         void UpdateEars()
