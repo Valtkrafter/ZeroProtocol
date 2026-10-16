@@ -6,6 +6,8 @@ Versionsnummern nach [Semantic Versioning](https://semver.org/lang/de/) (Regeln:
 
 ## [Unreleased]
 
+## [0.1.0-alpha.1] - 2026-10-16
+
 ### Neu
 - **Sprint** (Shift halten): neuer 60-fps-Laufzyklus mit Flugphase, 5,0 m/s (auf eine 1,8 m große Figur hochgerechnet etwa 6 m/s). In Blender gebaut (`Blender/scripts/build_run.py`), als `Yoru_Run.anim` in Unity gebacken. Beine, Rumpf, Arme, Kopf, Schwanz, Haare, Ohren und Brust bewegen sich mit Fahrtwind mit.
 - **Motion-Blur-Regler** (0–100 %, Standard 40 %): Esc öffnet das Panel oben rechts, F10 hält es fest, der Wert wird gespeichert. Globales Post-Processing-Volume `Assets/Settings/ArenaPostFx.asset`.
@@ -41,5 +43,6 @@ Erster Alpha-Stand (auf GitHub als "ZeroProtocol Alpha 0.0.1").
 - Haar-, Schwanz-, Ohren- und Brustphysik über Spring Bones.
 - Prüf-Tests im Play-Modus für Gehen, Blinzeln und Pose-Vergleich Blender gegen Unity.
 
-[Unreleased]: https://github.com/Valtkrafter/ZeroProtocol/compare/v0.0.1-alpha.1...HEAD
+[Unreleased]: https://github.com/Valtkrafter/ZeroProtocol/compare/v0.1.0-alpha.1...HEAD
+[0.1.0-alpha.1]: https://github.com/Valtkrafter/ZeroProtocol/compare/v0.0.1-alpha.1...v0.1.0-alpha.1
 [0.0.1-alpha.1]: https://github.com/Valtkrafter/ZeroProtocol/releases/tag/v0.0.1-alpha.1
