@@ -2,6 +2,8 @@
 
 > Arbeitstitel. Vor einer Veröffentlichung wird ein eigener Titel gewählt, weil es bereits ein Spiel namens "Zero Protocol" (Horror, 2024) gibt.
 
+**Version:** <!-- version -->0.0.1-alpha.1<!-- /version --> · [Releases](https://github.com/Valtkrafter/ZeroProtocol/releases) · [Changelog](CHANGELOG.md) · [Versionsregeln](Docs/VERSIONING.md)
+
 Ein Action-RPG im Stil von *Wuthering Waves*: Echtzeitkampf mit Ausweichen, Perfect Dodge und Konter sowie Charakterwechsel im Kampf. Ziel ist eine offene Welt mit Haupt- und Nebenmissionen.
 
 **Setting:** Eine Stadt der Zukunft nach einer Katastrophe. Taktisch, agentenhaft, sci-fi.
@@ -10,12 +12,32 @@ Ein Action-RPG im Stil von *Wuthering Waves*: Echtzeitkampf mit Ausweichen, Perf
 
 ## Status
 
-Frühe Entwicklung. Aktuell gibt es eine flache Test-Arena mit:
-- Bewegung, Sprung, Dash und Lock-On-Kamera (Third-Person)
-- Animation im Leerlauf
-- Haar-, Schwanz- und Ohrphysik über Spring Bones
+Frühe Entwicklung (Alpha). Aktuell gibt es eine flache Test-Arena mit:
+- Bewegung: Gehen (1,5 m/s), Sprint (5 m/s), Ausweichen, Sprung und Lock-On-Kamera (Third-Person)
+- Animationen für Leerlauf, Gehen, Laufen und Blinzeln (in Blender gebaut und mit Messwerten gegen Unity geprüft)
+- Haar-, Schwanz-, Ohren- und Brustphysik über Spring Bones, im Sprint mit Fahrtwind
+- Motion-Blur-Regler (Esc öffnet das Einstellungs-Panel)
 
-Geplant ist die Reihenfolge: Gehen und Laufen, Kampfkern, Gegner, Fähigkeiten und Ultimate, UI, Charakterwechsel, kleine offene Welt mit Quests, Feinschliff.
+Geplant ist die Reihenfolge: Kampfkern, Gegner, Fähigkeiten und Ultimate, UI, Charakterwechsel, kleine offene Welt mit Quests, Feinschliff.
+Offen ist noch die Richtung des Kampfes (Action-RPG oder Third-Person-Shooter), siehe [Docs/Grafik_Plan.md](Docs/Grafik_Plan.md).
+
+## Spielen
+
+Fertige Alpha-Builds stehen unter [Releases](https://github.com/Valtkrafter/ZeroProtocol/releases) (das Repository ist privat). ZIP herunterladen, **ganz entpacken** und `ZeroProtocol.exe` starten. Die `.exe` allein läuft nicht, sie braucht die Ordner daneben.
+
+| Taste | Aktion |
+|---|---|
+| WASD | Gehen |
+| Shift halten | Sprint |
+| Shift tippen | Ausweichen |
+| Leertaste | Springen |
+| Maus | Kamera |
+| Mausrad klicken / drehen | Lock-On / Zoom |
+| Esc | Maus freigeben und Einstellungen öffnen (Motion-Blur-Regler), F10 hält das Panel fest |
+
+## Versionen und Releases
+
+Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/) (zum Beispiel `0.1.0-alpha.1`). Die Regeln stehen in [Docs/VERSIONING.md](Docs/VERSIONING.md), die Änderungen im [CHANGELOG](CHANGELOG.md). Ein Release entsteht mit `python Tools/release.py`.
 
 ## Technik
 
@@ -32,7 +54,8 @@ Geplant ist die Reihenfolge: Gehen und Laufen, Kampfkern, Gegner, Fähigkeiten u
 - `Assets/Scripts/Dev/`: Tests im Play-Modus
 - `Assets/Editor/`: Editor-Werkzeuge, z. B. Arena-Aufbau und Animator-Builder
 - `Blender/`: Skripte und Quelldateien für Animationen
-- `Tools/`: Hilfsskripte
+- `Docs/`: Grafik-Plan, Versionsregeln, Release-Texte
+- `Tools/`: Hilfsskripte und `release.py` (Versionen und Releases)
 
 ## Einrichtung
 
