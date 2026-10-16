@@ -44,7 +44,8 @@ Styles (command line overrides  KEY=VALUE  after "build"):
                     elbow_k=1.7 hand_k=2 torso_comp=0.6 pitch_amp=1 tail_yaw=2.8 tail_pit=1.2 ear_amp=2.4 hair_amp=2.2 ARM_FIT=1 ARM_UP=8 ARM_FORE=6 ARM_FFWD=30
   calm (first version, Blender/work/versions/*_v1_ruhig.*):  yaw_p=3.5 roll_p=1.8 yaw_c=5.5 sway=0.012 BASE=0.062 TOE_OUT=6
                     swing_f=11 swing_b=7 elbow_k=1.3 hand_k=1.5 torso_comp=0.95 pitch_amp=0.5 tail_yaw=2 tail_pit=0.8 ear_amp=1.6 hair_amp=1.4
-Speed and cadence:  SPEED=1.30 NF=28 (user's choice); NF / SPEED / PH_TO / KNEE_* / HARM change the gait itself.
+Speed and cadence:  default now SPEED=1.50 NF=21 (171 steps/min; the first walk was SPEED=1.15 NF=26, an earlier try SPEED=1.30 NF=28);
+                    NF / SPEED / PH_TO / KNEE_* / HARM change the gait itself (NF below 21 does not build).
 Blender axes for Yoru: +Y forward, her left = -X, up = +Z.
 """
 import bpy, sys, math, cmath, json, struct, os, time, re
@@ -195,8 +196,10 @@ def set_linear(action):
 # ------------------------------------------------------------------ parameters
 class P:
     # --- gait timing and speed
-    NF = 26                  # frames per gait cycle (two steps); key NF == key 0
-    SPEED = 1.15             # walk speed in m/s  (stride length = SPEED * NF / FPS), the mean over a cycle
+    NF = 21                  # frames per gait cycle (two steps); key NF == key 0.  26 = the first, slower walk (1.15 m/s, 138 steps/min)
+    SPEED = 1.50             # walk speed in m/s  (stride length = SPEED * NF / FPS), the mean over a cycle.  The user found 1.15 too slow;
+                             # with her 74 cm legs 1.50 m/s at 171 steps/min (step 0.525 m) keeps the knees / pelvis of the slow walk
+                             # (sweep: Blender/work/speed_sweep/sweep.txt; 1.6 and more needs bent knees of 25 deg and more)
     speed_var = 0.05         # the ground speed wobbles by +- this share twice per cycle (a real walker slows down a little over every stance leg); 0 = constant
     speed_var_phase = 0.0    # cycle phase of the fastest ground speed = where the pelvis is lowest (right heel strike at 0, measured: the pelvis wave has its minimum at 0.00); the second peak is at +0.5
     PH_FF = 0.08             # foot flat

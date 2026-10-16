@@ -1,5 +1,6 @@
 """Puts the blink into Yoru_Walk.blend (run it AFTER build_walk.py; build_walk.py writes a file without the blink).
-usage: blender -b --factory-startup <Yoru_Walk.blend> --python build_blink.py -- <out dir ABSOLUTE> [SEED=247] [CYCLES=20] [FIRST=<seconds>] [PARAM=value ...]
+usage: blender -b --factory-startup <Yoru_Walk.blend> --python build_blink.py -- <out dir ABSOLUTE> [NAME=Yoru_Walk] [SEED=247] [CYCLES=20] [FIRST=<seconds>] [PARAM=value ...]
+(NAME=Yoru_Run for the run: the file is saved as Yoru_Run.blend, the blinks go to Yoru_Run_Blink.json and build_blink_Yoru_Run.log)
 what it does
   1. the walk becomes endless: every f-curve of the walk action gets a Cycles modifier (key 26 == key 0, period 26 frames), so the timeline can be
      much longer than one gait cycle (CYCLES gait cycles, default 20 = 520 frames = 17.3 s, the preview loops at that length)
@@ -16,8 +17,12 @@ import blink_model as bm
 argv = sys.argv[sys.argv.index('--') + 1:]
 OUT = argv[0]
 opts = {}
+NAME = 'Yoru_Walk'                                      # base name of the blend file: it is saved as NAME + '.blend' (NAME=Yoru_Run for the run)
 for a in argv[1:]:
     k, v = a.split('=')
+    if k == 'NAME':
+        NAME = v
+        continue
     opts[k] = float(v)
 SEED = int(opts.pop('SEED', 247))
 CYCLES = int(opts.pop('CYCLES', 20))
@@ -145,12 +150,12 @@ data = {'seed': SEED, 'fps': FPS, 'frames': NFR, 'seconds': T, 'gait_period_fram
         'weights_per_frame': frames_w,
         'hour_statistics': bm.stats(SEED)}
 os.makedirs(OUT, exist_ok=True)
-with open(os.path.join(OUT, 'Yoru_Blink.json'), 'w') as fh:
+with open(os.path.join(OUT, 'Yoru_Blink.json' if NAME == 'Yoru_Walk' else NAME + '_Blink.json'), 'w') as fh:
     json.dump(data, fh, indent=1)
 for i, (b, m) in enumerate(zip(sched, meas)):
     log('blink %d: start %.3f s (frame %.1f)  amp %.2f  close %.3f  hold %.3f  open %.3f | 10-90%% close %.3f s, open %.3f s, width at 50%% %.3f s' % (
         i, b.start, b.start * FPS, b.amp, b.close, b.hold, b.open, m['close_10_90'], m['open_90_10'], m['width_50']))
-bpy.ops.wm.save_as_mainfile(filepath=os.path.join(OUT, 'Yoru_Walk.blend'))
-with open(os.path.join(OUT, 'build_blink.log'), 'w') as fh:
+bpy.ops.wm.save_as_mainfile(filepath=os.path.join(OUT, NAME + '.blend'))
+with open(os.path.join(OUT, 'build_blink.log' if NAME == 'Yoru_Walk' else 'build_blink_%s.log' % NAME), 'w') as fh:
     fh.write('\n'.join(LOG) + '\n')
-log('saved', os.path.join(OUT, 'Yoru_Walk.blend'))
+log('saved', os.path.join(OUT, NAME + '.blend'))
