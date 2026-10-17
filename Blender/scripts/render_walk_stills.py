@@ -90,6 +90,7 @@ cams = {'side_wide': side_wide, 'top': top, 'hand': hand, 'feet': feet, 'chest_s
         'side': cam('side', (6.0, -0.05, 0.8), 2.0),
         'back': cam('back', (0.0, -6.0, 0.8), 2.0),
         'front': cam('front', (0.0, 6.0, 0.8), 2.0),
+        'front34': cam('front34', (6.0 * math.sin(math.radians(35)), 6.0 * math.cos(math.radians(35)), 1.3), 2.0),
         'three': cam('three', (6.0 * math.sin(math.radians(145)), 6.0 * math.cos(math.radians(145)), 1.6), 2.0)}
 arm_obj = next(o for o in bpy.data.objects if o.type == 'ARMATURE')
 for f in FRAMES:
