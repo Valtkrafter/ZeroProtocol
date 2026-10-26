@@ -1,0 +1,1 @@
+powershell -Command "Get-ChildItem -Path 'Assets/Scripts' -Recurse -Filter *.cs | ForEach-Object { '=== FILE: ' + $_.Name + ' ===' + \"`n\" + (Get-Content $_.FullName -Raw) } | Set-Clipboard"
