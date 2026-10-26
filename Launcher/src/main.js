@@ -146,123 +146,121 @@ if (canvas) {
   renderRain();
 }
 
-// 6. Beethoven Moonlight Sonata Synthesizer (Web Audio API)
-let audioCtx = null;
+// 6. Beethoven Moonlight Sonata - Echte Aufnahme (Audio Player)
+const bgMusic = document.getElementById('launcher-bgm') || new Audio('assets/moonlight_sonata.mp3');
+bgMusic.loop = true;
+bgMusic.preload = 'auto';
+
 let isMusicPlaying = false;
-let musicTimer = null;
-let currentStep = 0;
-
-const NOTES = {
-  'C#2': 69.30, 'E2': 82.41, 'G#2': 103.83, 'A1': 55.00, 'B1': 61.74, 'C#1': 34.65,
-  'G#3': 207.65, 'C#4': 277.18, 'E4': 329.63,
-  'A3': 220.00, 'D4': 293.66, 'F#4': 369.99,
-  'B3': 246.94, 'G#4': 415.30,
-};
-
-const sonataSequence = [
-  { bass: 'C#2', arpeggio: ['G#3', 'C#4', 'E4'] },
-  { bass: null,  arpeggio: ['G#3', 'C#4', 'E4'] },
-  { bass: null,  arpeggio: ['G#3', 'C#4', 'E4'] },
-  { bass: null,  arpeggio: ['G#3', 'C#4', 'E4'] },
-  { bass: 'B1',  arpeggio: ['G#3', 'C#4', 'E4'] },
-  { bass: null,  arpeggio: ['G#3', 'C#4', 'E4'] },
-  { bass: null,  arpeggio: ['G#3', 'C#4', 'E4'] },
-  { bass: null,  arpeggio: ['G#3', 'C#4', 'E4'] },
-  { bass: 'A1',  arpeggio: ['A3', 'C#4', 'E4'] },
-  { bass: null,  arpeggio: ['A3', 'C#4', 'E4'] },
-  { bass: 'A1',  arpeggio: ['A3', 'D4',  'F#4'] },
-  { bass: null,  arpeggio: ['A3', 'D4',  'F#4'] },
-  { bass: 'G#2', arpeggio: ['G#3', 'C#4', 'E4'] },
-  { bass: null,  arpeggio: ['G#3', 'C#4', 'E4'] },
-  { bass: 'G#2', arpeggio: ['G#3', 'C#4', 'E4'] },
-  { bass: null,  arpeggio: ['G#3', 'C#4', 'E4'] },
-  { bass: 'C#2', arpeggio: ['G#3', 'C#4', 'E4'], melody: 'G#4' },
-  { bass: null,  arpeggio: ['G#3', 'C#4', 'E4'] },
-  { bass: null,  arpeggio: ['G#3', 'C#4', 'E4'] },
-  { bass: null,  arpeggio: ['G#3', 'C#4', 'E4'], melody: 'G#4' },
-];
-
-function initAudio() {
-  if (!audioCtx) {
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  }
-  if (audioCtx.state === 'suspended') {
-    audioCtx.resume();
-  }
-}
-
-function playPianoTone(freq, duration, gainLevel = 0.15) {
-  if (!audioCtx) return;
-  const now = audioCtx.currentTime;
-
-  const osc = audioCtx.createOscillator();
-  const oscHarmonic = audioCtx.createOscillator();
-  const gain = audioCtx.createGain();
-
-  osc.type = 'sine';
-  osc.frequency.setValueAtTime(freq, now);
-
-  oscHarmonic.type = 'triangle';
-  oscHarmonic.frequency.setValueAtTime(freq * 2, now);
-
-  gain.gain.setValueAtTime(0.0001, now);
-  gain.gain.linearRampToValueAtTime(gainLevel, now + 0.02);
-  gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
-
-  const harmGain = audioCtx.createGain();
-  harmGain.gain.setValueAtTime(gainLevel * 0.25, now);
-
-  osc.connect(gain);
-  oscHarmonic.connect(harmGain);
-  harmGain.connect(gain);
-  gain.connect(audioCtx.destination);
-
-  osc.start(now);
-  oscHarmonic.start(now);
-  osc.stop(now + duration);
-  oscHarmonic.stop(now + duration);
-}
-
-function playNextSonataBeat() {
-  if (!isMusicPlaying) return;
-
-  const step = sonataSequence[currentStep % sonataSequence.length];
-
-  if (step.bass && NOTES[step.bass]) {
-    playPianoTone(NOTES[step.bass], 3.2, 0.22);
-  }
-
-  const tripDelay = 0.22;
-  step.arpeggio.forEach((noteName, idx) => {
-    setTimeout(() => {
-      if (isMusicPlaying && NOTES[noteName]) {
-        playPianoTone(NOTES[noteName], 1.8, 0.08);
-      }
-    }, idx * tripDelay * 1000);
-  });
-
-  if (step.melody && NOTES[step.melody]) {
-    playPianoTone(NOTES[step.melody], 2.8, 0.25);
-  }
-
-  currentStep++;
-  musicTimer = setTimeout(playNextSonataBeat, tripDelay * 3 * 1000);
-}
+let fadeInterval = null;
+const TARGET_VOLUME = 0.55;
+bgMusic.volume = TARGET_VOLUME;
 
 const btnAudio = document.getElementById('btn-audio');
-btnAudio?.addEventListener('click', (e) => {
-  e.preventDefault();
-  initAudio();
-  isMusicPlaying = !isMusicPlaying;
 
-  if (isMusicPlaying) {
+function updateAudioUI(playing) {
+  isMusicPlaying = playing;
+  if (!btnAudio) return;
+  if (playing) {
     btnAudio.classList.add('playing');
-    playNextSonataBeat();
+    btnAudio.setAttribute('title', 'Mondscheinsonate pausieren');
   } else {
     btnAudio.classList.remove('playing');
-    clearTimeout(musicTimer);
+    btnAudio.setAttribute('title', 'Mondscheinsonate abspielen');
+  }
+}
+
+function fadeAudio(targetVol, durationMs, onComplete) {
+  if (fadeInterval) clearInterval(fadeInterval);
+  const steps = 25;
+  const stepTime = Math.max(10, Math.floor(durationMs / steps));
+  const startVol = bgMusic.volume;
+  const delta = (targetVol - startVol) / steps;
+  let currentStep = 0;
+
+  fadeInterval = setInterval(() => {
+    currentStep++;
+    const nextVol = Math.max(0, Math.min(1, bgMusic.volume + delta));
+    bgMusic.volume = nextVol;
+    if (currentStep >= steps) {
+      clearInterval(fadeInterval);
+      fadeInterval = null;
+      bgMusic.volume = targetVol;
+      if (onComplete) onComplete();
+    }
+  }, stepTime);
+}
+
+async function playMusic(fadeIn = true) {
+  try {
+    if (fadeIn) {
+      bgMusic.volume = 0;
+    } else {
+      bgMusic.volume = TARGET_VOLUME;
+    }
+    await bgMusic.play();
+    updateAudioUI(true);
+    localStorage.setItem('zp_launcher_music', 'true');
+    if (fadeIn) {
+      fadeAudio(TARGET_VOLUME, 800);
+    }
+  } catch (err) {
+    console.warn('[BGM] Wiedergabe konnte nicht gestartet werden:', err);
+    updateAudioUI(false);
+  }
+}
+
+function pauseMusic(fadeOut = true) {
+  localStorage.setItem('zp_launcher_music', 'false');
+  if (fadeOut) {
+    fadeAudio(0, 500, () => {
+      bgMusic.pause();
+      bgMusic.volume = TARGET_VOLUME;
+      updateAudioUI(false);
+    });
+  } else {
+    bgMusic.pause();
+    bgMusic.volume = TARGET_VOLUME;
+    updateAudioUI(false);
+  }
+}
+
+btnAudio?.addEventListener('click', (e) => {
+  e.preventDefault();
+  if (isMusicPlaying) {
+    pauseMusic(true);
+  } else {
+    playMusic(true);
   }
 });
+
+// Sync UI if state changes externally (e.g. system media keys or ended)
+bgMusic.addEventListener('play', () => updateAudioUI(true));
+bgMusic.addEventListener('pause', () => {
+  if (!fadeInterval) updateAudioUI(false);
+});
+bgMusic.addEventListener('ended', () => {
+  if (!bgMusic.loop) updateAudioUI(false);
+});
+bgMusic.addEventListener('error', (err) => {
+  console.error('[BGM] Fehler beim Abspielen der Mondscheinsonate:', err);
+  updateAudioUI(false);
+});
+
+// Restore previous preference if user previously activated music
+if (localStorage.getItem('zp_launcher_music') === 'true') {
+  playMusic(true).catch(() => {
+    const resumeOnInteraction = () => {
+      if (localStorage.getItem('zp_launcher_music') === 'true' && !isMusicPlaying) {
+        playMusic(true);
+      }
+      window.removeEventListener('click', resumeOnInteraction);
+      window.removeEventListener('keydown', resumeOnInteraction);
+    };
+    window.addEventListener('click', resumeOnInteraction, { once: true });
+    window.addEventListener('keydown', resumeOnInteraction, { once: true });
+  });
+}
 
 // 7. Live GitHub Commits Fetcher
 async function fetchCommits() {

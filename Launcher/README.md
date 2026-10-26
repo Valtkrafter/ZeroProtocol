@@ -4,7 +4,7 @@ Stilvoller, leichtgewichtiger Desktop-Launcher für **Zero Protocol**, gebaut mi
 
 ## Features (Phase 1)
 * **Design:** Rahmenloses Sci-Fi-Fenster (1020x640) mit Glassmorphism, dezenten Partikel-Regeneffekten und Yoru-Visual.
-* **Audio-Player:** Eingebauter, prozeduraler Web-Audio-Synthesizer für Beethovens **Mondscheinsonate (1. Satz)** mit animierten Equalizer-Balken.
+* **Audio-Player:** Atmosphärische Aufnahme von Beethovens **Mondscheinsonate (1. Satz, Op. 27 Nr. 2)** mit sanftem Fade-In/Fade-Out und animierten Equalizer-Balken.
 * **Story & Lore Tab:** Zusammenfassung des *Zero Protocol*, des *Chronos-Sturms* und der *Hollows*.
 * **Patchnotes & Status:** Überblick über Alpha-Version v0.0.2.
 * **Steuerung:** Tastenbelegung für PC (WASD, Sprint, Dodge, Lock-On).
