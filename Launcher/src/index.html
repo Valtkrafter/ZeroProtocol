@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Zero Protocol</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="launcher-window">
+    <!-- Rain Particles Canvas -->
+    <canvas id="rain-canvas"></canvas>
+
+    <!-- Background Vignette & Ambient Glow -->
+    <div class="ambient-glow"></div>
+    <div class="grid-overlay"></div>
+
+    <!-- Custom Frameless Titlebar -->
+    <header class="titlebar">
+      <div class="titlebar-brand">
+        <span class="brand-icon">⬡</span>
+        <span class="brand-name">ZERO PROTOCOL</span>
+        <span class="brand-badge">ALPHA v0.0.2</span>
+      </div>
+
+      <!-- Pure drag handle: only this element captures window drag -->
+      <div class="titlebar-drag-handle" data-tauri-drag-region></div>
+
+      <div class="titlebar-controls">
+        <button id="btn-audio" class="ctrl-btn music-btn" type="button" title="Mondscheinsonate abspielen">
+          <span class="icon">🎵</span>
+          <span class="music-label">BEETHOVEN</span>
+          <span class="eq-bars">
+            <span></span><span></span><span></span>
+          </span>
+        </button>
+        <button id="btn-minimize" class="ctrl-btn" type="button" title="Minimieren">─</button>
+        <button id="btn-close" class="ctrl-btn close-btn" type="button" title="Schließen">✕</button>
+      </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="launcher-content">
+      <!-- Left Column: Hero & Action -->
+      <section class="hero-section">
+        <div class="hero-tag">Spezialeinheit Shirogane · Sektor 0</div>
+        <h1 class="hero-title">
+          ZERO<br>
+          <span class="highlight">PROTOCOL</span>
+        </h1>
+        <p class="hero-subtitle">
+          Third-Person Tactical Gun-Fu & Bullet Time. Die Stadt liegt in Trümmern – doch das Protokoll ist noch nicht beendet.
+        </p>
+
+        <div class="status-panel">
+          <div class="status-row">
+            <span class="dot online"></span>
+            <span class="label">VERSION:</span>
+            <span class="val">Alpha 0.0.2 (Build Ready)</span>
+          </div>
+          <div class="status-row">
+            <span class="dot anomaly"></span>
+            <span class="label">BIO-STATUS:</span>
+            <span class="val cyan">ANOMALIE (100% IMMUN)</span>
+          </div>
+        </div>
+
+        <!-- Big Call to Action -->
+        <div class="action-box">
+          <button id="btn-launch" class="btn-primary" type="button">
+            <span class="btn-glare"></span>
+            <span class="btn-icon">⚡</span>
+            <div class="btn-content">
+              <span class="btn-title">DEMNÄCHST VERFÜGBAR</span>
+              <span class="btn-sub">ALPHA-TESTS AUF GITHUB ANSEHEN</span>
+            </div>
+          </button>
+          <div class="action-hints">
+            <span>DirectX 12 / Vulkan</span>
+            <span>·</span>
+            <span>Windows 10/11 x64</span>
+            <span>·</span>
+            <span>Unity 6 Engine</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Right Column: Clean Tabbed Terminal (NO YORU IMAGE) -->
+      <section class="terminal-section">
+        <div class="terminal-card">
+          <!-- Tab Navigation -->
+          <nav class="terminal-tabs">
+            <button class="tab-btn active" data-tab="tab-story" type="button">STORY & LORE</button>
+            <button class="tab-btn" data-tab="tab-patchnotes" type="button">PATCHNOTES</button>
+            <button class="tab-btn" data-tab="tab-commits" type="button">GITHUB COMMITS</button>
+            <button class="tab-btn" data-tab="tab-controls" type="button">STEUERUNG</button>
+          </nav>
+
+          <!-- Tab Content Body -->
+          <div class="terminal-body">
+            <!-- Tab: Story -->
+            <div class="tab-content active" id="tab-story">
+              <h3>DAS ZERO PROTOCOL</h3>
+              <p>
+                Als das anomale <strong>Schwarze Gewitter</strong> die Atmosphäre zerschnitt und die Menschen mutieren ließ, aktivierten die Konzerne das <em>Zero Protocol</em>:
+              </p>
+              <blockquote>
+                „Riegelt alle Sektoren hermetisch ab. Lasst die Streitkräfte und Zivilisten draußen sterben.“
+              </blockquote>
+              <p>
+                Yorus Einheit wurde als menschlicher Schutzwall geopfert. Doch ihr modifizierter Körper widerstand dem Zerfall. Als unaufhaltsame Anomalie marschiert sie Sektor für Sektor nach oben, um das System zum Einsturz zu bringen.
+              </p>
+            </div>
+
+            <!-- Tab: Patchnotes -->
+            <div class="tab-content" id="tab-patchnotes">
+              <div class="version-head">
+                <span class="v-num">Alpha v0.0.2</span>
+                <span class="v-date">Stand: 16. Oktober 2026</span>
+              </div>
+              <ul class="patch-list">
+                <li><strong>Neuer Sprint (5,0 m/s):</strong> 60-fps-Laufzyklus mit Flugphase und Fahrtwind-Physik.</li>
+                <li><strong>Dynamische Kamera:</strong> Sichtfeld-Erweiterung (+6 FOV) und weiche Distanzanpassung bei Sprint.</li>
+                <li><strong>Motion-Blur-Regler:</strong> Esc öffnet die Ingame-Grafikeinstellungen (F10 fixiert das Panel).</li>
+                <li><strong>Yoru V2:</strong> Feine Gesichts-Mimik und kontinuierliche Spring-Bone-Haarphysik.</li>
+              </ul>
+            </div>
+
+            <!-- Tab: Live GitHub Commits -->
+            <div class="tab-content" id="tab-commits">
+              <div class="commits-head">
+                <span class="c-title">NEUESTE GITHUB-COMMITS</span>
+                <button id="btn-refresh-commits" class="refresh-btn" type="button">⟳ Neu laden</button>
+              </div>
+              <div id="commits-container" class="commits-container">
+                <div class="commit-item">
+                  <div class="commit-meta"><span class="sha">v0.0.2</span><span class="time">16.10.2026</span></div>
+                  <div class="msg">chore(release): v0.0.2 - Run Update & Sprint-Physik</div>
+                </div>
+                <div class="commit-item">
+                  <div class="commit-meta"><span class="sha">v0.0.1</span><span class="time">15.10.2026</span></div>
+                  <div class="msg">Erster spielbarer Alpha-Build mit Test-Arena</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Tab: Controls -->
+            <div class="tab-content" id="tab-controls">
+              <h3>TASTATUR & MAUS</h3>
+              <div class="controls-grid">
+                <div class="ctrl-row"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd><span>Bewegen / Gehen</span></div>
+                <div class="ctrl-row"><kbd>Shift</kbd> (halten)<span>Sprinten (5,0 m/s)</span></div>
+                <div class="ctrl-row"><kbd>Shift</kbd> (tippen)<span>Ausweichen (Dodge)</span></div>
+                <div class="ctrl-row"><kbd>Leertaste</kbd><span>Springen</span></div>
+                <div class="ctrl-row"><kbd>Mausrad-Klick</kbd><span>Lock-On anvisieren</span></div>
+                <div class="ctrl-row"><kbd>Esc</kbd><span>Grafik-Menü öffnen</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="launcher-footer">
+      <div class="footer-links">
+        <button id="link-github" class="foot-btn" type="button">⚡ GitHub Releases</button>
+        <button id="link-repo" class="foot-btn" type="button">📁 Projekt-Repo</button>
+        <button id="link-build" class="foot-btn" type="button">💻 Build-Ordner</button>
+        <span class="divider">/</span>
+        <span class="studio-credit">© 2026 Valtkrafter Studios</span>
+      </div>
+      <div class="footer-right">
+        <span class="security-chip">ENC-256 // PROTOCOL ACTIVE</span>
+      </div>
+    </footer>
+  </div>
+
+  <script src="main.js"></script>
+</body>
+</html>

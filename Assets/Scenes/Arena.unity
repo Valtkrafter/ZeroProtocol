@@ -345,6 +345,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 5724178586230855802, guid: b89281abdbcbaa840bcfbfa5155afdd7, type: 3}
       insertIndex: -1
       addedObject: {fileID: 259486889}
+    - targetCorrespondingSourceObject: {fileID: 5724178586230855802, guid: b89281abdbcbaa840bcfbfa5155afdd7, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 259486891}
   m_SourcePrefab: {fileID: 100100000, guid: b89281abdbcbaa840bcfbfa5155afdd7, type: 3}
 --- !u!95 &259486886 stripped
 Animator:
@@ -397,6 +400,18 @@ MonoBehaviour:
   - 0
   - -40
   baseLift: 0
+  useIdleV2TailShape: 1
+  idleV2TailRotation:
+  - {x: -0.04983, y: -0, z: 0, w: 0.99876}
+  - {x: -0.2255, y: -0, z: -0, w: 0.97424}
+  - {x: -0.50088, y: -0, z: 0, w: 0.86552}
+  - {x: -0.66276, y: -0.01338, z: 0, w: 0.74871}
+  - {x: -0.71129, y: -0.04261, z: -0, w: 0.70161}
+  - {x: -0.61202, y: -0.41824, z: -0, w: 0.6712}
+  - {x: -0.61179, y: -0.41807, z: -0, w: 0.67152}
+  - {x: 0.50689, y: -0.58085, z: -0, w: 0.63693}
+  idleV2SwayScale: 0.45
+  idleV2FlickScale: 0.4
   walkRestPitch:
   - -24.4
   - 12
@@ -444,6 +459,13 @@ MonoBehaviour:
   flickForce: 0.4
   flickDuration: 0.3
   landKick: 1.2
+  idleWindHair: 0.027
+  idleWindDirection: {x: -0.6, y: 0, z: -0.8}
+  idleGustStrength: 2
+  idleGustPeriod: 12
+  idleGustTimes: {x: 3.9, y: 9.3}
+  idleGustWidth: 0.55
+  earBaseBack: 9
   earFlickInterval: {x: 4, y: 9}
   earFoldBack: 10
   earOut: 3.5
@@ -463,6 +485,28 @@ MonoBehaviour:
   windHairSprint: 0.19
   windEarSprint: 0.3
   windLift: 0.25
+--- !u!114 &259486891
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 259486887}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 54058ece45fe4ce4bbacad3991f25bb0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ZeroProtocol.Player.YoruFaceExpression
+  strength: 1
+  eyeAngry: 0.4
+  eyeFun: 0.16
+  mouthNeutral: 0.55
+  mouthClose: 0.2
+  browAngry: 0.5
+  period: 12
+  lidVariation: 0.1
+  mouthVariation: 0.08
+  browVariation: 0.05
 --- !u!1 &423968225
 GameObject:
   m_ObjectHideFlags: 0

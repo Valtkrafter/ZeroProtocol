@@ -32,6 +32,26 @@ namespace ZeroProtocol.Player
         [Tooltip("Whole tail raised at the base, degrees above horizontal.")]
         public float baseLift = 0f;
 
+        [Header("Standing tail of the Blender idle v2 (hangs calm down the middle, the tip rolls in)")]
+        [Tooltip("On: the standing tail takes the exact shape of the Blender idle v2 (mean over its loop, with the sideways roll of the tip), 'restPitch' is not used for standing. Off: the old compact C.")]
+        public bool useIdleV2TailShape = true;
+        [Tooltip("Rotation of every tail joint (x, y, z, w; model axes, hips rotation removed) for the standing shape. From Blender/Yoru_Idle_v2_tailrest.json (Blender/scripts/export_tail_rest_v2.py); checked in Unity: joint positions within 1.2 mm of Blender.")]
+        public Vector4[] idleV2TailRotation =
+        {
+            new Vector4(-0.04983f, -0.00000f, 0.00000f, 0.99876f),
+            new Vector4(-0.22550f, -0.00000f, -0.00000f, 0.97424f),
+            new Vector4(-0.50088f, -0.00000f, 0.00000f, 0.86552f),
+            new Vector4(-0.66276f, -0.01338f, 0.00000f, 0.74871f),
+            new Vector4(-0.71129f, -0.04261f, -0.00000f, 0.70161f),
+            new Vector4(-0.61202f, -0.41824f, -0.00000f, 0.67120f),
+            new Vector4(-0.61179f, -0.41807f, -0.00000f, 0.67152f),
+            new Vector4(0.50689f, -0.58085f, -0.00000f, 0.63693f)
+        };
+        [Tooltip("Scale of the lazy sway of the tail base while she stands, with the idle v2 shape (the hanging tail has a longer lever than the old compact C).")]
+        public float idleV2SwayScale = 0.45f;
+        [Tooltip("Scale of the tip flick while she stands, with the idle v2 shape (the hanging tail flicks much further than the old C; Blender: a small flick of about 10 degrees).")]
+        public float idleV2FlickScale = 0.4f;
+
         [Header("Tail while walking")]
         [Tooltip("Bend per tail joint while she moves (same convention as restPitch): down from the hips, then rising to the tip in a J. Blender/Yoru_Walk_tail.json walkRestPitch (the clearance lift of 16 degrees is in it).")]
         public float[] walkRestPitch = { -24.4f, 12f, -2f, 4f, 14f, 20f, 26f, 20f };
@@ -89,7 +109,20 @@ namespace ZeroProtocol.Player
         public float flickDuration = 0.3f;
         public float landKick = 1.2f;
 
+        [Header("Idle breeze (the hair moves a little in the wind while she stands; Blender idle v2: steady lean of about 6 degrees at the tips, two gusts per 12 s)")]
+        [Tooltip("Steady push on the hair spring bones while standing (same unit as windHair * speed). Measured in Play Mode against no wind: 0.02 = 4 degrees, 0.03 = about 6 degrees (the Blender idle), 0.04 = 8 degrees, 0.08 = 17 degrees at the tips of the long strands.")]
+        public float idleWindHair = 0.027f;
+        [Tooltip("Direction the wind pushes, in the model's axes: a breeze from front right blowing to back left.")]
+        public Vector3 idleWindDirection = new Vector3(-0.6f, 0f, -0.8f);
+        [Tooltip("Extra push at the peak of a gust, as a share of the steady wind (1 = twice as strong).")]
+        public float idleGustStrength = 2f;
+        public float idleGustPeriod = 12f;
+        public Vector2 idleGustTimes = new Vector2(3.9f, 9.3f);
+        public float idleGustWidth = 0.55f;
+
         [Header("Ears")]
+        [Tooltip("Resting angle of both ears, tilted back from the model's neutral (degrees). Expression B of the Blender idle v2: about 9 degrees (measured in the finished idle).")]
+        public float earBaseBack = 9f;
         public Vector2 earFlickInterval = new Vector2(4f, 9f);
         public float earFoldBack = 10f;
         public float earOut = 3.5f;
@@ -147,6 +180,7 @@ namespace ZeroProtocol.Player
         float restBlend, restBlendApplied;
         Transform[] tailJoints;
         Quaternion[] tailBaseRotation;
+        Quaternion[] idleV2Delta;           // standing tail shape of the Blender idle v2 as a local rotation per joint (null = old C)
         float lastHipsY;
         float bounceSpeed;
 
@@ -192,6 +226,7 @@ namespace ZeroProtocol.Player
             tailJoints = joints.ToArray();
             tailBaseRotation = new Quaternion[tailJoints.Length];
             for (int i = 0; i < tailJoints.Length; i++) tailBaseRotation[i] = tailJoints[i].localRotation;
+            ComputeIdleV2TailShape();
             ApplyTailRest(0f, 0f, false);
 
             // driver between hips and tail root, so the base of the tail can be animated
@@ -260,10 +295,39 @@ namespace ZeroProtocol.Player
             {
                 float walk = i < walkRestPitch.Length ? walkRestPitch[i] : restPitch[i];
                 float run = i < runRestPitch.Length ? runRestPitch[i] : walk;
+                if (idleV2Delta != null)
+                {
+                    // standing = the Blender idle v2 shape (a full rotation), walking and running = pitch only; same axis, so the blend is the same as before
+                    var q = Quaternion.Slerp(Quaternion.Slerp(idleV2Delta[i], Quaternion.Euler(walk, 0f, 0f), k), Quaternion.Euler(run, 0f, 0f), kRun);
+                    tailJoints[i].localRotation = q * tailBaseRotation[i];
+                    continue;
+                }
                 float p = Mathf.Lerp(Mathf.Lerp(restPitch[i], walk, k), run, kRun);
                 tailJoints[i].localRotation = Quaternion.Euler(p, 0f, 0f) * tailBaseRotation[i];
             }
             if (resetSpring && tailSpring != null) tailSpring.Setup(true);
+        }
+
+        /// <summary>
+        /// Turns the world rotations of the Blender idle v2 tail (idleV2TailRotation, model axes) into a local rotation per joint, relative to the
+        /// T-pose, once at the start: the joints are set joint by joint (parent first) as the Blender shape says, read back and put back to the T-pose.
+        /// </summary>
+        void ComputeIdleV2TailShape()
+        {
+            idleV2Delta = null;
+            if (!useIdleV2TailShape || idleV2TailRotation == null || idleV2TailRotation.Length < tailJoints.Length) return;
+            int n = tailJoints.Length;
+            var restWorld = new Quaternion[n];
+            for (int i = 0; i < n; i++) restWorld[i] = tailJoints[i].rotation;
+            Quaternion model = transform.rotation, modelInv = Quaternion.Inverse(model);
+            for (int i = 0; i < n; i++)
+            {
+                var e = idleV2TailRotation[i];
+                tailJoints[i].rotation = model * new Quaternion(e.x, e.y, e.z, e.w) * modelInv * restWorld[i];
+            }
+            idleV2Delta = new Quaternion[n];
+            for (int i = 0; i < n; i++) idleV2Delta[i] = tailJoints[i].localRotation * Quaternion.Inverse(tailBaseRotation[i]);
+            for (int i = 0; i < n; i++) tailJoints[i].localRotation = tailBaseRotation[i];
         }
 
         void SetupEars()
@@ -349,10 +413,11 @@ namespace ZeroProtocol.Player
             // faster and smaller side sway while running
             float lazy = (Mathf.Sin(6.2832f * time / swayPeriod) + 0.35f * Mathf.Sin(6.2832f * time / (swayPeriod * 0.5f) + 1.3f)) / 1.35f;
             float standing = 1f - walkN;
-            float targetYaw = swayYaw * standing * lazy
+            float swayK = idleV2Delta != null ? idleV2SwayScale : 1f;                               // the hanging idle v2 tail has a longer lever
+            float targetYaw = swayYaw * swayK * standing * lazy
                               - Mathf.Lerp(walkYaw, sprintYaw, runBlend) * walkN * Mathf.Clamp(pelvisYaw / 8f, -1.5f, 1.5f)
                               + runYaw * runN * Mathf.Sin(6.2832f * gaitPhase);
-            float targetPitch = baseLift + swayPitch * standing * Mathf.Sin(6.2832f * 2f * time / swayPeriod + 0.8f)
+            float targetPitch = baseLift + swayPitch * swayK * standing * Mathf.Sin(6.2832f * 2f * time / swayPeriod + 0.8f)
                                 - Mathf.Lerp(walkPitch, sprintPitch, runBlend) * walkN * Mathf.Clamp(bounceSpeed / Mathf.Lerp(PelvisPeakSpeed, RunPelvisPeakSpeed, runBlend), -1.5f, 1.5f) + runLift * runN;
             if (!grounded) targetPitch += vy > 0f ? airLiftRising : airLiftFalling;
             if (dash) { targetPitch = dashPitch; targetYaw = 0f; }
@@ -380,7 +445,12 @@ namespace ZeroProtocol.Player
             float hairGain = Mathf.Lerp(windHair, windHairSprint / Mathf.Max(0.1f, runRef), sprintK);
             float earGain = Mathf.Lerp(windOther, windEarSprint / Mathf.Max(0.1f, runRef), sprintK);
             Vector3 lift = Vector3.up * (wind.magnitude * windLift * sprintK);
-            foreach (var sb in hairSprings) sb.ExternalForce = (wind + lift) * hairGain;
+            // idle breeze: a steady, slowly waving push on the hair while she stands, two gusts per loop (only standing, not while she moves)
+            float breezeK = 1f - Mathf.Clamp01(speed / (0.5f * walkRef));
+            float gust = GustBump(Time.time, idleGustTimes.x) + GustBump(Time.time, idleGustTimes.y);
+            float waves = 1f + 0.25f * Mathf.Sin(6.2832f * Time.time / 6f + 0.9f);
+            Vector3 breeze = transform.TransformDirection(idleWindDirection.normalized) * (idleWindHair * breezeK * waves * (1f + idleGustStrength * gust));
+            foreach (var sb in hairSprings) sb.ExternalForce = (wind + lift) * hairGain + breeze;
             foreach (var sb in earSprings) sb.ExternalForce = (wind + lift) * earGain;
             foreach (var sb in otherSprings) sb.ExternalForce = wind * windOther;
 
@@ -388,10 +458,19 @@ namespace ZeroProtocol.Player
             if (flickTimer > 0f)
             {
                 float k = Mathf.Sin(Mathf.PI * (1f - flickTimer / flickDuration));          // 0 -> 1 -> 0
-                force += driver.right * (flickSign * flickForce * k);
+                float flickScale = idleV2Delta != null ? Mathf.Lerp(idleV2FlickScale, 1f, walkN) : 1f;
+                force += driver.right * (flickSign * flickForce * flickScale * k);
             }
             if (kickTimer > 0f) force += Vector3.down * (landKick * (kickTimer / 0.18f));
             tailSpring.ExternalForce = force;
+        }
+
+        /// <summary>0..1 bump around a gust time of the idle loop (periodic, so the gusts repeat every idleGustPeriod seconds).</summary>
+        float GustBump(float time, float center)
+        {
+            float half = idleGustPeriod * 0.5f;
+            float d = Mathf.Abs(Mathf.Repeat(time - center + half, idleGustPeriod) - half);
+            return Mathf.Exp(-(d / Mathf.Max(0.05f, idleGustWidth)) * (d / Mathf.Max(0.05f, idleGustWidth)));
         }
 
         /// <summary>Blends the spring values between the walk and the sprint values of the Blender simulations (the springs read their values at every step).</summary>
@@ -424,7 +503,7 @@ namespace ZeroProtocol.Player
                 float bump = u >= 0f && u <= 1f ? Mathf.Sin(Mathf.PI * u) : 0f;           // 0 -> 1 -> 0
                 float sway = earSway * Mathf.Sin(6.2832f * Time.time / (swayPeriod * 0.5f) + e.earPhase);
                 // fold back = tilt the ear tip to -Z (negative turn about the right axis), out = tilt it sideways
-                var q = Quaternion.AngleAxis(-(sway + earFoldBack * bump), transform.right)
+                var q = Quaternion.AngleAxis(-(sway + earFoldBack * bump + earBaseBack), transform.right)
                         * Quaternion.AngleAxis(e.sideSign * earOut * bump, transform.forward);
                 e.bone.localRotation = e.restLocal;
                 e.bone.rotation = q * e.bone.rotation;

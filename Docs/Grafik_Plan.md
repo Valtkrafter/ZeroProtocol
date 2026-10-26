@@ -94,7 +94,7 @@ Ehrliche Einschränkungen:
 
 Vorschlag für den ersten spielbaren Ausschnitt („Vertical Slice“):
 1. Eine Arena, 3 Gegnertypen + 1 Boss
-2. Doppelpistolen als Hauptwaffe (+1 zweite Waffe)
+2. Doppelpistolen als alleinige Waffe (reines Gun-Fu / John-Wick-Stil, keine Schwerter/Zweitwaffen)
 3. Sprint, Ausweichen, Rutschen; Zielen mit Schulterkamera
 4. Treffer-Feedback (Hit-Stop, Funken, Treffer-Marker), einfache Gegner-KI
 5. Toon-Look (G1) + Tonemapping/Bloom (G3)

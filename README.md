@@ -1,68 +1,120 @@
 # Zero Protocol
 
-> Arbeitstitel. Vor einer Veröffentlichung wird ein eigener Titel gewählt, weil es bereits ein Spiel namens "Zero Protocol" (Horror, 2024) gibt.
+> **Arbeitstitel.** Vor einer kommerziellen Veröffentlichung wird ein eigener Titel gewählt, da 2024 bereits ein gleichnamiges Horror-Spiel erschienen ist.
 
 **Version:** <!-- version -->0.0.2<!-- /version --> · [Releases](https://github.com/Valtkrafter/ZeroProtocol/releases) · [Changelog](CHANGELOG.md) · [Versionsregeln](Docs/VERSIONING.md)
 
-Ein Action-RPG im Stil von *Wuthering Waves*: Echtzeitkampf mit Ausweichen, Perfect Dodge und Konter sowie Charakterwechsel im Kampf. Ziel ist eine offene Welt mit Haupt- und Nebenmissionen.
+---
 
-**Setting:** Eine Stadt der Zukunft nach einer Katastrophe. Taktisch, agentenhaft, sci-fi.
+## 1. High Concept & Genre
 
-**Protagonistin:** Shirogane Yoru, ein Agentin mit silbern-lila Haar, Katzenohren und -schwanz sowie schwarzem taktischem Outfit.
+**Zero Protocol** ist ein stilvoller, düsterer **Third-Person Tactical Shooter mit Gun-Fu-Fokus** in einer dystopischen Sci-Fi-Zukunftsstadt. 
 
-## Status
+Das Spiel verbindet das messerscharfe, unaufhaltsame Auftreten von *John Wick* und *The Eminence in Shadow* mit der taktischen Ästhetik von *Arknights: Endfield* und der visuellen Brillanz moderner Anime-Actionspiele:
+* **Kampffokus:** Schnelle, präzise Schusswechsel aus der Schulterperspektive (Over-the-Shoulder), Doppelpistolen, Rutsch- und Ausweichmanöver, begrenzte Bullet Time (Zeitlupe) und brutales Nahkampf-Gun-Fu. Kein träger Deckungsshooter, sondern hochdynamische, akrobatische Gefechte.
+* **Tonalität:** Ernst, atmosphärisch, düster und kompromisslos. Keine albernen Slapstick-Elemente oder kitschige Klischees.
+* **Audio-Signatur:** Klassische Musik – insbesondere Ludwig van Beethoven (**Mondscheinsonate**) –, die die Protagonistin während ihrer Einsätze über ein Ohr-Implantat hört, um ihren Puls im Kugelhagel absolut ruhig zu halten.
 
-Frühe Entwicklung (Alpha). Aktuell gibt es eine flache Test-Arena mit:
-- Bewegung: Gehen (1,5 m/s), Sprint (5 m/s), Ausweichen, Sprung und Lock-On-Kamera (Third-Person)
-- Animationen für Leerlauf, Gehen, Laufen und Blinzeln (in Blender gebaut und mit Messwerten gegen Unity geprüft)
-- Haar-, Schwanz-, Ohren- und Brustphysik über Spring Bones, im Sprint mit Fahrtwind
-- Motion-Blur-Regler (Esc öffnet das Einstellungs-Panel)
+---
 
-Geplant ist die Reihenfolge: Kampfkern, Gegner, Fähigkeiten und Ultimate, UI, Charakterwechsel, kleine offene Welt mit Quests, Feinschliff.
-Offen ist noch die Richtung des Kampfes (Action-RPG oder Third-Person-Shooter), siehe [Docs/Grafik_Plan.md](Docs/Grafik_Plan.md).
+## 2. Welt & Story-Lore
 
-## Spielen
+### Die Katastrophe: Der Chronos-Sturm
+Vor Jahren riss ein unnatürliches Phänomen den Himmel auf: das **„Schwarze Gewitter“**. Ein ununterbrochener Sturm aus violetter Strahlung und atmosphärischer Entropie, der die Außenwelt unbewohnbar machte. Wer dem Niederschlag ungeschützt ausgesetzt ist, dessen Zellen zersetzen sich im Rekordtempo.
 
-Fertige Alpha-Builds stehen unter [Releases](https://github.com/Valtkrafter/ZeroProtocol/releases) (das Repository ist privat). ZIP herunterladen, **ganz entpacken** und `ZeroProtocol.exe` starten. Die `.exe` allein läuft nicht, sie braucht die Ordner daneben.
+### Das Zonen-System & die Serum-Währung
+Die verbliebene vertikale Megacity ist in hermetisch abgeriegelte Ringe unterteilt:
+* **Ring 0 / Der Abgrund (Slums & Ruinen):** Die Heimat der Ausgestoßenen, Gesetzlosen und Schmuggler. Hier regiert das nackte Überleben.
+* **Mittlere Sektoren:** Industrie, Frondienst und kontrollierte Kasernen.
+* **Sektor 1 / Der Kern (Sanctum):** Wolkenkratzer über der Wolkendecke, in denen die korrupte Elite und Konzernlenker in unendlichem Luxus leben.
+
+**Das Stasis-Serum:**  
+Um in den vergifteten Zonen zu überleben, benötigt jeder Mensch regelmäßige Dosen von stabilisierendem Serum.
+* In den Slums gibt es nur minderwertiges, gestrecktes Serum (*„Sludge“*), das wie Säure in den Adern brennt und den Verfall nur um wenige Tage aufschiebt.
+* Die Eliten im Zentrum horten reinstes Serum, das sie praktisch unsterblich macht.
+* **Die Bedrohung (Körperhorror):** Sinkt die Zell-Stabilität eines Menschen auf 0 %, stirbt er nicht einfach – er mutiert in einem schmerzhaften Prozess zu den **„Hollows“** (agile, knöcherne Schattenbestien), die Jagd auf das Serum im Blut lebender Menschen machen.
+
+### Das „Zero Protocol“ & der Verrat
+Als die Katastrophe außer Kontrolle geriet, aktivierten die Konzerne das **Zero Protocol**: Ein geheimes Säuberungs- und Abriegelungsdekret. Die regulären Streitkräfte und alle unteren Distrikte wurden als lebender Puffer geopfert und eingekesselt, um den Rückzug der Eliten zu sichern. 
+
+Die Spezialeinheit der Protagonistin wurde vorsätzlich ausgelöscht. Ihr Kommandant brannte jedoch in seinen letzten Atemzügen den Master-Schlüssel des Protokolls in ihr System.
+
+---
+
+## 3. Die Protagonistin: Shirogane Yoru
+
+* **Design:** Zierliche, aber durchtrainierte Spezialagentin. Silber-lila Haare, feine Katzenohren und Katzenschwanz (Resultat militärischer Gen-Optimierung für gesteigerte Reflexe und Sinne), kühle violette Augen.
+* **Kleidung:** Mattschwarzes Taktik-Outfit, enge Weste, Schulterpolster, Oberschenkel-Holster für Doppelpistolen, taktische Beintaschen.
+* **Persönlichkeit:** Souverän, extrem kontrolliert, unbeeindruckt, fokussiert. Sie verkörpert pure Badass-Attitüde („Swagger Walk“), ist weiblich und geschmeidig, aber absolut tödlich. **Kein Neko-Kawaii, kein Niedlichkeitsgehabe.**
+* **Ihr Status (Die Anomalie):** Durch das überlebte Zero Protocol hat ihr Körper eine permanente Immunität entwickelt. Während die gesamte Stadt vom Serum versklavt wird, steht ihr Bio-Wert auf `[STATUS: ANOMALIE]`. Sie kann weder erpresst noch infiziert werden.
+* **Ihr Ziel:** Sie ist keine barmherzige Retterin. Sie wandert von Zone zu Zone, um das Zero Protocol zu vollenden: die Zerschlagung der Barrieren und die bedingungslose Vernichtung der Eliten an der Spitze der Stadt.
+
+Das vollständige filmische Intro und Drehbuch zur Einstiegsszene ist dokumentiert in [Docs/Drehbuch_Prolog.md](Docs/Drehbuch_Prolog.md).
+
+---
+
+## 4. Aktueller technischer Status (Alpha)
+
+Das Projekt befindet sich in der aktiven Alpha-Entwicklung (**v0.0.2**).
+
+* **Test-Arena:** Flaches Testgelände mit modularen Hindernissen (`Assets/Scenes/Arena.unity`).
+* **Bewegungssystem:**
+  * Gehen (1,5 m/s), Sprint (5,0 m/s), Ausweichen per Shift-Tipp, Sprung.
+  * Third-Person-Kamera mit dynamischem Lock-On-System und verstellbarem Sichtfeld beim Sprint.
+  * Aktuell arbeitet Claude (Subagent `yoru-animator`) an der Feinabstimmung der Locomotion-Zyklen in Blender (orientiert an den schnellen Laufphasen aus *NTE*).
+* **Sekundärphysik:**
+  * Haar-, Schwanz-, Ohren- und Brustphysik über Spring Bones (UniVRM).
+  * Gesichts-Controller für subtile Mimik (`YoruFaceExpression.cs`) und dynamisches Blinzeln.
+* **Grafik & Post-Processing:**
+  * Unity 6 (6000.3.25f1) mit Universal Render Pipeline (URP 17.3).
+  * Post-Processing-Volume mit justierbarem Motion-Blur-Regler (Esc öffnet Menü, F10 pinnt es).
+  * Geplant: Toon-Shader (lilToon oder MToon-URP) mit dezentem Outline-Rendering und PBR-Materialien für taktische Ausrüstung (siehe [Docs/Grafik_Plan.md](Docs/Grafik_Plan.md)).
+
+---
+
+## 5. Steuerung (PC / Tastatur & Maus)
 
 | Taste | Aktion |
 |---|---|
-| WASD | Gehen |
-| Shift halten | Sprint |
-| Shift tippen | Ausweichen |
-| Leertaste | Springen |
-| Maus | Kamera |
-| Mausrad klicken / drehen | Lock-On / Zoom |
-| Esc | Maus freigeben und Einstellungen öffnen (Motion-Blur-Regler), F10 hält das Panel fest |
+| **W / A / S / D** | Gehen / Laufen |
+| **Shift (halten)** | Sprint (5,0 m/s mit dynamischer Kamera) |
+| **Shift (tippen)** | Ausweichen (Dodge / Dash) |
+| **Leertaste** | Springen |
+| **Maus** | Kamera drehen |
+| **Mausrad (Klick)** | Lock-On auf Ziel aufschalten |
+| **Mausrad (Drehen)** | Kamera-Zoom |
+| **Esc** | Mauszeiger freigeben / Einstellungs-Panel öffnen (Motion Blur) |
+| **F10** | Einstellungs-Panel auf dem Bildschirm fixieren |
 
-## Versionen und Releases
+---
 
-Versionsnummern folgen [Semantic Versioning](https://semver.org/lang/de/): jede Alpha-Veröffentlichung zählt die letzte Ziffer hoch (`0.0.1`, `0.0.2`, `0.0.3` ...), alle `0.x.y` sind Alpha, `1.0.0` ist die erste vollständige Version. Die Regeln stehen in [Docs/VERSIONING.md](Docs/VERSIONING.md), die Änderungen im [CHANGELOG](CHANGELOG.md). Ein Release entsteht mit `python Tools/release.py`.
+## 6. Projektstruktur
 
-## Technik
+* `Assets/Scenes/Arena.unity`: Haupt-Test-Arena für Gameplay, Physik und Rendering.
+* `Assets/Scripts/Player/`: Controller, Movement, Lock-On, Blinzeln und Gesichts-Mimik.
+* `Assets/Scripts/Camera/`: Third-Person-Cinemachine-Steuerung und Lock-On-Kamera.
+* `Assets/Scripts/Settings/`: Post-Processing- und Grafikeinstellungen.
+* `Assets/Editor/`: Editor-Werkzeuge (z. B. `ArenaBuilder.cs`, Animator-Tools).
+* `Blender/`: Blender-Dateien (`.blend`), Generierungsskripte für Bewegungszyklen und Pose-Streams.
+* `Docs/`:
+  * `Charakter_Yoru.md`: Verbindlicher Leitfaden zu Posen, Attitüde und Bewegungsregeln.
+  * `Drehbuch_Prolog.md`: Vollständiges Drehbuch für das filmische Intro und den Einstiegskampf.
+  * `Grafik_Plan.md`: Schrittweiser Fahrplan für Toon-Shader, Beleuchtung und Post-Processing.
+  * `Animations_Referenzen.md`: Messwerte und Vergleiche (NTE, WuWa, Genshin, Endfield).
+  * `VERSIONING.md`: Regeln für Semantic Versioning und Releases.
+* `Tools/`: Python-Werkzeuge für Release-Builds (`release.py`), Animator-Bakes und MCP-Unity-Bridge.
 
-- Unity 6 (6000.3.25f1) mit Universal Render Pipeline
-- Neues Input System
-- Cinemachine 3.1.4
-- UniVRM 0.131.3 für das VRM-Modell
-- Animationen werden in Blender erstellt und über Pose-Streams nach Unity übernommen
+---
 
-## Projektstruktur
+## 7. Setup & Erste Schritte
 
-- `Assets/Scenes/Arena.unity`: Test-Arena
-- `Assets/Scripts/Player/`: Steuerung, Kamera, Lock-On, Sekundärbewegung
-- `Assets/Scripts/Dev/`: Tests im Play-Modus
-- `Assets/Editor/`: Editor-Werkzeuge, z. B. Arena-Aufbau und Animator-Builder
-- `Blender/`: Skripte und Quelldateien für Animationen
-- `Docs/`: Grafik-Plan, Versionsregeln, Release-Texte
-- `Tools/`: Hilfsskripte und `release.py` (Versionen und Releases)
+1. Projekt in **Unity 6 (6000.3.25f1)** öffnen.
+2. In der oberen Menüleiste den Befehl `Zero Protocol > Build Test Arena` ausführen (initialisiert die Arena mit Yoru, Licht und Kamera).
+3. Die Szene `Assets/Scenes/Arena.unity` laden und **Play** drücken.
+4. Fertige Test-Builds stehen unter [Releases](https://github.com/Valtkrafter/ZeroProtocol/releases) zur Verfügung. ZIP-Datei vollständig entpacken und `ZeroProtocol.exe` starten.
 
-## Einrichtung
+---
 
-1. Projekt mit Unity 6000.3.25f1 öffnen.
-2. Menü `Zero Protocol > Build Test Arena` ausführen.
-3. Den MCP-Server für Unity über `Window > MCP for Unity` starten, falls er für die Werkzeuge gebraucht wird.
+## 8. Lizenz & Rechte
 
-## Lizenz
-
-Noch offen. Das Modell der Protagonistin ist derzeit nur für den Autor freigegeben und darf vor einer Veröffentlichung nicht kommerziell genutzt werden.
+Alle Rechte vorbehalten. Das 3D-Modell der Protagonistin und zugehörige Assets sind derzeit ausschließlich für Entwicklungs- und Testzwecke freigegeben und vor einer offiziellen Freigabe nicht für kommerzielle Zwecke lizenziert.

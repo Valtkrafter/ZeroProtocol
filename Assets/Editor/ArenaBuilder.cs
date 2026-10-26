@@ -83,6 +83,7 @@ namespace ZeroProtocol.EditorTools
                 if (ctrl != null && modelAnimator != null) modelAnimator.runtimeAnimatorController = ctrl;
                 model.AddComponent<YoruSecondaryMotion>();
                 model.AddComponent<YoruBlink>();
+                model.AddComponent<YoruFaceExpression>();
                 if (UseScalpShell)
                 {
                     var scalp = model.AddComponent<YoruScalpShell>();
