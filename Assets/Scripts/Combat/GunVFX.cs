@@ -288,6 +288,7 @@ namespace ZeroProtocol.Combat
                 GameObject go = new GameObject($"Spark_{i}");
                 go.transform.SetParent(poolRoot, false);
                 ParticleSystem ps = go.AddComponent<ParticleSystem>();
+                ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
                 var main = ps.main;
                 main.playOnAwake = false;
                 main.duration = 0.25f;

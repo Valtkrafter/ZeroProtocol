@@ -9,38 +9,8 @@ using ZeroProtocol.Player;
 
 namespace ZeroProtocol.EditorTools
 {
-    [InitializeOnLoad]
     public static class CombatSystemVerifier
     {
-        static CombatSystemVerifier()
-        {
-            try
-            {
-                RunTests();
-                ArenaBuilder.Build();
-            }
-            catch (Exception ex)
-            {
-                File.WriteAllText("combat_verification_results.txt", "ERROR IN STATIC CONSTRUCTOR: " + ex.ToString());
-                Debug.LogError("[CombatSystemVerifier] Exception: " + ex);
-            }
-        }
-
-        [UnityEditor.Callbacks.DidReloadScripts]
-        public static void OnScriptsReloaded()
-        {
-            try
-            {
-                RunTests();
-                ArenaBuilder.Build();
-            }
-            catch (Exception ex)
-            {
-                File.WriteAllText("combat_verification_results.txt", "ERROR IN DIDRELOADSCRIPTS: " + ex.ToString());
-                Debug.LogError("[CombatSystemVerifier] Exception: " + ex);
-            }
-        }
-
         [MenuItem("Zero Protocol/Run Combat Verification Tests")]
         public static void RunTests()
         {
@@ -463,6 +433,7 @@ namespace ZeroProtocol.EditorTools
             // TEST 16: LockOnSystem Auto-Switch on Target Destruction
             // -----------------------------------------------------------
             var lockPlayerGo = new GameObject("_TestLockPlayer");
+            lockPlayerGo.transform.position = new Vector3(500f, 1.5f, -5f);
             var lockInput = lockPlayerGo.AddComponent<GameInput>();
             var lockSys = lockPlayerGo.AddComponent<LockOnSystem>();
             var lockCamGo = new GameObject("_TestLockCam");
@@ -470,11 +441,11 @@ namespace ZeroProtocol.EditorTools
             var lockRig = lockCamGo.AddComponent<ThirdPersonCamera>();
             lockSys.cameraRig = lockRig;
             lockRig.target = lockPlayerGo.transform;
-            lockCamGo.transform.position = new Vector3(0f, 1.5f, -5f);
+            lockCamGo.transform.position = new Vector3(500f, 1.5f, -5f);
             lockCamGo.transform.rotation = Quaternion.identity;
 
             var t1Go = GameObject.CreatePrimitive(PrimitiveType.Capsule);
-            t1Go.transform.position = new Vector3(0f, 1.5f, 5f);
+            t1Go.transform.position = new Vector3(500f, 1.5f, 5f);
             var t1Target = t1Go.AddComponent<LockOnTarget>();
             var t1St = t1Go.AddComponent<ShootingTarget>();
             t1St.targetRenderer = t1Go.GetComponent<Renderer>();
@@ -482,7 +453,7 @@ namespace ZeroProtocol.EditorTools
             liveTargetOnEnable.Invoke(t1St, null);
 
             var t2Go = GameObject.CreatePrimitive(PrimitiveType.Capsule);
-            t2Go.transform.position = new Vector3(1f, 1.5f, 10f);
+            t2Go.transform.position = new Vector3(501f, 1.5f, 10f);
             var t2Target = t2Go.AddComponent<LockOnTarget>();
             var t2St = t2Go.AddComponent<ShootingTarget>();
             t2St.targetRenderer = t2Go.GetComponent<Renderer>();
@@ -512,6 +483,7 @@ namespace ZeroProtocol.EditorTools
             // TEST 17: YoruController Strafe Locomotion & Directional Combat Dodge
             // -----------------------------------------------------------
             var yoruGo = new GameObject("_TestYoru");
+            yoruGo.transform.position = new Vector3(500f, 0f, 0f);
             var yoruCc = yoruGo.AddComponent<CharacterController>();
             var yoruIn = yoruGo.AddComponent<GameInput>();
             inputAwake.Invoke(yoruIn, null);
@@ -523,7 +495,7 @@ namespace ZeroProtocol.EditorTools
             yoruAwake?.Invoke(yoruCtrl, null);
 
             var yoruTargetGo = GameObject.CreatePrimitive(PrimitiveType.Capsule);
-            yoruTargetGo.transform.position = new Vector3(0f, 0f, 10f);
+            yoruTargetGo.transform.position = new Vector3(500f, 0f, 10f);
             var yoruLockTarget = yoruTargetGo.AddComponent<LockOnTarget>();
             if (!LockOnTarget.All.Contains(yoruLockTarget)) lockTargetOnEnable?.Invoke(yoruLockTarget, null);
             yoruLock.SetTarget(yoruLockTarget);
