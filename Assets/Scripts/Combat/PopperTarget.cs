@@ -89,6 +89,11 @@ namespace ZeroProtocol.Combat
             tiltVelocity = 0f;
         }
 
+        public override void ResetTarget()
+        {
+            Respawn();
+        }
+
         protected override void Respawn()
         {
             IsAlive = true;

@@ -103,6 +103,11 @@ namespace ZeroProtocol.Combat
             ActiveTargets.Remove(this);
         }
 
+        void OnDestroy()
+        {
+            ActiveTargets.Remove(this);
+        }
+
         protected virtual void Update()
         {
             float dt = Time.deltaTime;
@@ -204,6 +209,11 @@ namespace ZeroProtocol.Combat
             tiltVelocity = 0f;
             currentFlashColor = ColorKillMarker;
             flashTimer = flashDuration;
+        }
+
+        public virtual void ResetTarget()
+        {
+            Respawn();
         }
 
         protected virtual void Respawn()

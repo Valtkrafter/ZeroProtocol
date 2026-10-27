@@ -41,6 +41,21 @@ namespace ZeroProtocol.EditorTools
                 }
             }
 
+            // Pre-flight cleanup: Remove any orphaned test objects from previous interrupted runs
+            var rootObjects = UnityEngine.SceneManagement.SceneManager.GetActiveScene().GetRootGameObjects();
+            foreach (var go in rootObjects)
+            {
+                if (go != null && (go.name.StartsWith("_Test") || go.name.StartsWith("_Live") || go.name.StartsWith("_Occluded") || 
+                    go.name.StartsWith("_Knock") || go.name.StartsWith("_Popper") || go.name.StartsWith("T1_Lock") || 
+                    go.name.StartsWith("T2_Lock") || go.transform.position.x > 100f))
+                {
+                    UnityEngine.Object.DestroyImmediate(go);
+                }
+            }
+            ShootingTarget.ActiveTargets.RemoveAll(t => t == null);
+            LockOnTarget.All.RemoveAll(t => t == null);
+            Physics.SyncTransforms();
+
             // -----------------------------------------------------------
             // TEST 1: Strict Architectural Guardrail - No Character Animation / Bones
             // -----------------------------------------------------------
@@ -98,8 +113,37 @@ namespace ZeroProtocol.EditorTools
             // -----------------------------------------------------------
             // TEST 5: DualPistolCombat Mechanics & Alternating Cadence
             // -----------------------------------------------------------
-            var playerGo = new GameObject("_TestPlayer");
-            var input = playerGo.AddComponent<GameInput>();
+            GameObject playerGo = null;
+            GameObject targetGo = null;
+            GameObject railGo = null;
+            GameObject testCamGo = null;
+            GameObject wallGo = null;
+            GameObject liveTargetGo = null;
+            GameObject camGo = null;
+            GameObject occludedTargetGo = null;
+            GameObject occluderWall = null;
+            GameObject knockGo = null;
+            GameObject popperGo = null;
+            GameObject lockPlayerGo = null;
+            GameObject lockCamGo = null;
+            GameObject t1Go = null;
+            GameObject t2Go = null;
+            GameObject yoruGo = null;
+            GameObject yoruTargetGo = null;
+            GameObject crateGo = null;
+            GameObject trolleyGo = null;
+            GameObject paperGo = null;
+            GameObject scaledPaperGo = null;
+            GameObject termGo = null;
+            GameObject textGo = null;
+            GameObject trigGo = null;
+            GameObject testCharGo = null;
+            GameObject shellPoolGo = null;
+
+            try
+            {
+                playerGo = new GameObject("_TestPlayer");
+                var input = playerGo.AddComponent<GameInput>();
             var inputAwake = typeof(GameInput).GetMethod("Awake", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
             inputAwake.Invoke(input, null);
             var combat = playerGo.AddComponent<DualPistolCombat>();
@@ -176,7 +220,7 @@ namespace ZeroProtocol.EditorTools
             // -----------------------------------------------------------
             // TEST 7: Reactive Target Physics (Harmonic Wobble & Hitboxes)
             // -----------------------------------------------------------
-            var targetGo = new GameObject("_TestTarget");
+            targetGo = new GameObject("_TestTarget");
             var dummyTilt = new GameObject("DummyTilt");
             dummyTilt.transform.SetParent(targetGo.transform);
 
@@ -242,7 +286,7 @@ namespace ZeroProtocol.EditorTools
             // -----------------------------------------------------------
             // TEST 9: MovingRailTarget Sinusoidal Velocity Profile
             // -----------------------------------------------------------
-            var railGo = new GameObject("_TestRail");
+            railGo = new GameObject("_TestRail");
             var railTarget = railGo.AddComponent<MovingRailTarget>();
             railTarget.railOffset = new Vector3(10f, 0f, 0f);
             railTarget.travelDuration = 2.0f;
@@ -253,9 +297,19 @@ namespace ZeroProtocol.EditorTools
             // -----------------------------------------------------------
             // TEST 10: Hit Feedback Gating (Walls, Dead Dummies, Alive Targets)
             // -----------------------------------------------------------
-            var wallGo = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            float testX = 800f;
+            playerGo.transform.position = new Vector3(testX, 0f, 0f);
+            playerGo.transform.rotation = Quaternion.identity;
+
+            testCamGo = new GameObject("_TestCam10");
+            var testCam10 = testCamGo.AddComponent<Camera>();
+            testCamGo.transform.position = new Vector3(testX + 0.25f, 1.15f, -2f);
+            testCamGo.transform.rotation = Quaternion.identity;
+            combat.mainCamera = testCam10;
+
+            wallGo = GameObject.CreatePrimitive(PrimitiveType.Cube);
             wallGo.name = "_TestWall";
-            wallGo.transform.position = new Vector3(0f, 1.15f, 5f);
+            wallGo.transform.position = new Vector3(testX, 1.15f, 5f);
             wallGo.transform.localScale = new Vector3(10f, 5f, 0.5f);
 
             int hitFeedbackCount = 0;
@@ -269,8 +323,6 @@ namespace ZeroProtocol.EditorTools
 
             // Shot into static wall (has collider, but NO IDamageable)
             Physics.SyncTransforms();
-            playerGo.transform.position = new Vector3(0f, 0f, 0f);
-            playerGo.transform.rotation = Quaternion.identity;
             nextFireTimeField.SetValue(combat, 0f);
 
             var executeShotMethod = typeof(DualPistolCombat).GetMethod("ExecuteShot", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
@@ -279,10 +331,10 @@ namespace ZeroProtocol.EditorTools
             Assert(hitFeedbackCount == 0, "Hit Feedback Not Dispatched On Static Wall/Floor Hits");
 
             // Move wall aside and place an alive dummy
-            wallGo.transform.position = new Vector3(100f, 100f, 100f);
-            var liveTargetGo = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+            wallGo.transform.position = new Vector3(testX + 100f, 100f, 100f);
+            liveTargetGo = GameObject.CreatePrimitive(PrimitiveType.Capsule);
             liveTargetGo.name = "_LiveTarget";
-            liveTargetGo.transform.position = new Vector3(0.25f, 1.15f, 5f);
+            liveTargetGo.transform.position = new Vector3(testX + 0.25f, 1.15f, 5f);
             var liveSt = liveTargetGo.AddComponent<ShootingTarget>();
             liveSt.targetRenderer = liveTargetGo.GetComponent<Renderer>();
             var liveTargetAwake = typeof(ShootingTarget).GetMethod("Awake", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
@@ -313,9 +365,9 @@ namespace ZeroProtocol.EditorTools
             // -----------------------------------------------------------
             // TEST 11: Parallax Safety on Point-Blank Occlusion
             // -----------------------------------------------------------
-            var camGo = new GameObject("_TestCam");
+            camGo = new GameObject("_TestCam");
             var testCam = camGo.AddComponent<Camera>();
-            camGo.transform.position = new Vector3(0f, 1.5f, -2f);
+            camGo.transform.position = new Vector3(testX, 1.5f, -2f);
             camGo.transform.rotation = Quaternion.identity;
             combat.mainCamera = testCam;
 
@@ -329,9 +381,9 @@ namespace ZeroProtocol.EditorTools
             // -----------------------------------------------------------
             // TEST 12: Bullet Magnetism Line of Sight Occlusion
             // -----------------------------------------------------------
-            var occludedTargetGo = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+            occludedTargetGo = GameObject.CreatePrimitive(PrimitiveType.Capsule);
             occludedTargetGo.name = "_OccludedTarget";
-            occludedTargetGo.transform.position = new Vector3(0.25f, 1.15f, 12f);
+            occludedTargetGo.transform.position = new Vector3(testX + 0.25f, 1.15f, 12f);
             var occludedSt = occludedTargetGo.AddComponent<ShootingTarget>();
             occludedSt.targetRenderer = occludedTargetGo.GetComponent<Renderer>();
             var occludedHb = occludedTargetGo.AddComponent<TargetHitbox>();
@@ -340,8 +392,8 @@ namespace ZeroProtocol.EditorTools
             liveTargetOnEnable.Invoke(occludedSt, null);
 
             // Put a giant occluding wall in between
-            var occluderWall = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            occluderWall.transform.position = new Vector3(0.25f, 1.15f, 6f);
+            occluderWall = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            occluderWall.transform.position = new Vector3(testX + 0.25f, 1.15f, 6f);
             occluderWall.transform.localScale = new Vector3(5f, 5f, 1f);
             Physics.SyncTransforms();
 
@@ -350,7 +402,7 @@ namespace ZeroProtocol.EditorTools
             Vector3 resultDir = (Vector3)applyMagMethod.Invoke(combat, new object[] { combat.muzzleRight.position, straightAhead });
 
             Assert(resultDir == straightAhead, "Bullet Magnetism Ignores Occluded Target Behind Wall");
-            occluderWall.transform.position = new Vector3(200f, 200f, 200f);
+            occluderWall.transform.position = new Vector3(testX + 200f, 200f, 200f);
             Physics.SyncTransforms();
 
             // -----------------------------------------------------------
@@ -377,11 +429,12 @@ namespace ZeroProtocol.EditorTools
             // -----------------------------------------------------------
             // TEST 14: Reactive Target Positive Knockdown on Lethal Hit
             // -----------------------------------------------------------
-            var knockGo = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+            knockGo = GameObject.CreatePrimitive(PrimitiveType.Capsule);
             var knockSt = knockGo.AddComponent<ShootingTarget>();
             knockSt.targetRenderer = knockGo.GetComponent<Renderer>();
             liveTargetAwake.Invoke(knockSt, null);
             liveTargetOnEnable.Invoke(knockSt, null);
+            knockSt.respawnDelay = 999f;
 
             knockSt.TakeDamage(new DamageInfo(150f, knockGo.transform.position, Vector3.back, Vector3.forward, HitType.Body, HandSide.Right));
             Assert(!knockSt.IsAlive, "Knock Target Lethally Damaged");
@@ -399,7 +452,7 @@ namespace ZeroProtocol.EditorTools
             // -----------------------------------------------------------
             // TEST 15: PopperTarget Flat Knockdown (90 deg) & 2.5s Spring Back
             // -----------------------------------------------------------
-            var popperGo = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            popperGo = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
             var popper = popperGo.AddComponent<PopperTarget>();
             popper.targetRenderer = popperGo.GetComponent<Renderer>();
             liveTargetAwake.Invoke(popper, null);
@@ -412,6 +465,9 @@ namespace ZeroProtocol.EditorTools
             popper.TakeDamage(new DamageInfo(120f, popperGo.transform.position, Vector3.back, Vector3.forward, HitType.Body, HandSide.Left));
             Assert(!popper.IsAlive, "PopperTarget Marked Dead After Lethal Hit");
 
+            // Prevent premature respawn during editmode test with throttled delta time
+            popper.respawnDelay = 999f;
+
             var popperUpdate = typeof(PopperTarget).GetMethod("Update", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
             for (int step = 0; step < 20; step++)
             {
@@ -422,6 +478,7 @@ namespace ZeroProtocol.EditorTools
             float popperTilt = (float)popperTiltField.GetValue(popper);
             Assert(popperTilt > 80f, "PopperTarget Hinged Down Flat (> 80 deg) when Dead");
 
+            popper.respawnDelay = 2.5f;
             var popperDeathTimer = typeof(ShootingTarget).GetField("deathTimer", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
             popperDeathTimer.SetValue(popper, 2.6f);
             popperUpdate.Invoke(popper, null);
@@ -432,11 +489,11 @@ namespace ZeroProtocol.EditorTools
             // -----------------------------------------------------------
             // TEST 16: LockOnSystem Auto-Switch on Target Destruction
             // -----------------------------------------------------------
-            var lockPlayerGo = new GameObject("_TestLockPlayer");
+            lockPlayerGo = new GameObject("_TestLockPlayer");
             lockPlayerGo.transform.position = new Vector3(500f, 1.5f, -5f);
             var lockInput = lockPlayerGo.AddComponent<GameInput>();
             var lockSys = lockPlayerGo.AddComponent<LockOnSystem>();
-            var lockCamGo = new GameObject("_TestLockCam");
+            lockCamGo = new GameObject("_TestLockCam");
             var lockCam = lockCamGo.AddComponent<Camera>();
             var lockRig = lockCamGo.AddComponent<ThirdPersonCamera>();
             lockSys.cameraRig = lockRig;
@@ -444,7 +501,7 @@ namespace ZeroProtocol.EditorTools
             lockCamGo.transform.position = new Vector3(500f, 1.5f, -5f);
             lockCamGo.transform.rotation = Quaternion.identity;
 
-            var t1Go = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+            t1Go = GameObject.CreatePrimitive(PrimitiveType.Capsule);
             t1Go.transform.position = new Vector3(500f, 1.5f, 5f);
             var t1Target = t1Go.AddComponent<LockOnTarget>();
             var t1St = t1Go.AddComponent<ShootingTarget>();
@@ -452,13 +509,16 @@ namespace ZeroProtocol.EditorTools
             liveTargetAwake.Invoke(t1St, null);
             liveTargetOnEnable.Invoke(t1St, null);
 
-            var t2Go = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+            t2Go = GameObject.CreatePrimitive(PrimitiveType.Capsule);
             t2Go.transform.position = new Vector3(501f, 1.5f, 10f);
             var t2Target = t2Go.AddComponent<LockOnTarget>();
             var t2St = t2Go.AddComponent<ShootingTarget>();
             t2St.targetRenderer = t2Go.GetComponent<Renderer>();
             liveTargetAwake.Invoke(t2St, null);
             liveTargetOnEnable.Invoke(t2St, null);
+
+            t1Go.name = "T1_LockTarget";
+            t2Go.name = "T2_LockTarget";
 
             var lockTargetOnEnable = typeof(LockOnTarget).GetMethod("OnEnable", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
             if (!LockOnTarget.All.Contains(t1Target)) lockTargetOnEnable?.Invoke(t1Target, null);
@@ -482,7 +542,7 @@ namespace ZeroProtocol.EditorTools
             // -----------------------------------------------------------
             // TEST 17: YoruController Strafe Locomotion & Directional Combat Dodge
             // -----------------------------------------------------------
-            var yoruGo = new GameObject("_TestYoru");
+            yoruGo = new GameObject("_TestYoru");
             yoruGo.transform.position = new Vector3(500f, 0f, 0f);
             var yoruCc = yoruGo.AddComponent<CharacterController>();
             var yoruIn = yoruGo.AddComponent<GameInput>();
@@ -494,7 +554,7 @@ namespace ZeroProtocol.EditorTools
             var yoruAwake = typeof(YoruController).GetMethod("Awake", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
             yoruAwake?.Invoke(yoruCtrl, null);
 
-            var yoruTargetGo = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+            yoruTargetGo = GameObject.CreatePrimitive(PrimitiveType.Capsule);
             yoruTargetGo.transform.position = new Vector3(500f, 0f, 10f);
             var yoruLockTarget = yoruTargetGo.AddComponent<LockOnTarget>();
             if (!LockOnTarget.All.Contains(yoruLockTarget)) lockTargetOnEnable?.Invoke(yoruLockTarget, null);
@@ -522,7 +582,7 @@ namespace ZeroProtocol.EditorTools
             // -----------------------------------------------------------
             // TEST 18: AmmoCrate Resupply System
             // -----------------------------------------------------------
-            var crateGo = new GameObject("_TestAmmoCrate");
+            crateGo = new GameObject("_TestAmmoCrate");
             var ammoCrate = crateGo.AddComponent<AmmoCrate>();
             var ammoLeftProp = typeof(DualPistolCombat).GetProperty("AmmoLeft");
             ammoLeftProp.SetValue(combat, 2);
@@ -537,25 +597,229 @@ namespace ZeroProtocol.EditorTools
             Assert(!combat.IsReloading, "Resupply Cleared Reload State");
 
             // -----------------------------------------------------------
-            // Clean up test game objects
+            // TEST 19: Target Trolley Motion & Distance Presets
             // -----------------------------------------------------------
-            UnityEngine.Object.DestroyImmediate(playerGo);
-            UnityEngine.Object.DestroyImmediate(targetGo);
-            UnityEngine.Object.DestroyImmediate(railGo);
-            UnityEngine.Object.DestroyImmediate(wallGo);
-            UnityEngine.Object.DestroyImmediate(liveTargetGo);
-            UnityEngine.Object.DestroyImmediate(camGo);
-            UnityEngine.Object.DestroyImmediate(occludedTargetGo);
-            UnityEngine.Object.DestroyImmediate(occluderWall);
-            UnityEngine.Object.DestroyImmediate(knockGo);
-            UnityEngine.Object.DestroyImmediate(popperGo);
-            UnityEngine.Object.DestroyImmediate(lockPlayerGo);
-            UnityEngine.Object.DestroyImmediate(lockCamGo);
-            UnityEngine.Object.DestroyImmediate(t1Go);
-            UnityEngine.Object.DestroyImmediate(t2Go);
-            UnityEngine.Object.DestroyImmediate(yoruGo);
-            UnityEngine.Object.DestroyImmediate(yoruTargetGo);
-            UnityEngine.Object.DestroyImmediate(crateGo);
+            trolleyGo = new GameObject("_TestTrolley");
+            var trolley = trolleyGo.AddComponent<TargetTrolley>();
+            trolley.boothOriginZ = -1.0f;
+            trolley.transform.position = new Vector3(0f, 3.4f, TargetTrolley.Z10M);
+
+            Assert(Mathf.Approximately(trolley.CurrentDistance, 10.0f), "Trolley Initial Distance Equals 10m");
+            Assert(Mathf.Approximately(TargetTrolley.ZRecall, -0.2f), "Trolley Recall Z Equals -0.2m (0.8m stop)");
+            Assert(Mathf.Approximately(TargetTrolley.Z5M, 4.0f), "Trolley 5m Stop Z Equals 4.0m");
+            Assert(Mathf.Approximately(TargetTrolley.Z10M, 9.0f), "Trolley 10m Stop Z Equals 9.0m");
+            Assert(Mathf.Approximately(TargetTrolley.Z15M, 14.0f), "Trolley 15m Stop Z Equals 14.0m");
+            Assert(Mathf.Approximately(TargetTrolley.Z25M, 24.0f), "Trolley 25m Stop Z Equals 24.0m");
+
+            trolley.MoveToDistance(15.0f);
+            Assert(trolley.IsMoving, "Trolley In Transit After MoveToDistance(15m)");
+            Assert(Mathf.Approximately(trolley.TargetDistance, 15.0f), "Trolley Target Distance Set to 15m");
+            Assert(Mathf.Approximately(trolley.TargetZ, 14.0f), "Trolley Target Z Set to 14.0m");
+
+            var trolleyUpdate = typeof(TargetTrolley).GetMethod("Update", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            for (int step = 0; step < 250; step++)
+            {
+                trolleyUpdate.Invoke(trolley, null);
+                if (!trolley.IsMoving) break;
+            }
+
+            Assert(!trolley.IsMoving, "Trolley Critically Damped Travel Completed");
+            Assert(Mathf.Abs(trolley.CurrentDistance - 15.0f) < 0.05f, "Trolley Arrived at 15m Stop");
+
+            trolley.Recall();
+            Assert(Mathf.Approximately(trolley.TargetDistance, 0.8f), "Trolley Recall Target Distance Equals 0.8m");
+            Assert(Mathf.Approximately(trolley.TargetZ, -0.2f), "Trolley Recall Target Z Equals -0.2m");
+
+            // -----------------------------------------------------------
+            // TEST 20: Paper Target Radial Scoring Zones
+            // -----------------------------------------------------------
+            paperGo = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            var paperTarget = paperGo.AddComponent<PaperTarget>();
+            var paperAwake = typeof(PaperTarget).GetMethod("Awake", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            paperAwake.Invoke(paperTarget, null);
+
+            Assert(paperTarget.CalculateScore(new Vector2(0f, 0f)) == 10, "Paper Target Bullseye Center Hit Scores 10 Pts");
+            Assert(paperTarget.CalculateScore(new Vector2(0.04f, 0f)) == 10, "Paper Target Inner Bullseye Radius (<=0.05m) Scores 10 Pts");
+            Assert(paperTarget.CalculateScore(new Vector2(0.08f, 0f)) == 9, "Paper Target 9-Ring Radius (<=0.10m) Scores 9 Pts");
+            Assert(paperTarget.CalculateScore(new Vector2(0.14f, 0f)) == 8, "Paper Target 8-Ring Radius (<=0.16m) Scores 8 Pts");
+            Assert(paperTarget.CalculateScore(new Vector2(0.20f, 0f)) == 7, "Paper Target 7-Ring Radius (<=0.22m) Scores 7 Pts");
+            Assert(paperTarget.CalculateScore(new Vector2(0.24f, 0.35f)) == 5, "Paper Target Silhouette Torso Zone Scores 5 Pts");
+            Assert(paperTarget.CalculateScore(new Vector2(0.50f, 0.60f)) == 0, "Paper Target Out of Bounds Miss Scores 0 Pts");
+
+            // -----------------------------------------------------------
+            // TEST 21: Paper Target Dynamic Hole Decals & Extreme Spread Grouping
+            // -----------------------------------------------------------
+            Assert(paperTarget.ShotCount == 0, "Initial Paper Target Shot Count is 0");
+            Assert(paperTarget.TotalScore == 0, "Initial Paper Target Total Score is 0");
+            Assert(paperTarget.ExtremeSpreadCm == 0f, "Initial Extreme Spread is 0.0 cm");
+
+            // Shot 1: Bullseye at (0.02, 0.03) -> 10 pts
+            paperTarget.TakeDamage(new DamageInfo(25f, paperGo.transform.position + new Vector3(0.02f, 0.03f, 0f), Vector3.back, Vector3.forward, HitType.Body, HandSide.Left));
+            Assert(paperTarget.ShotCount == 1, "Shot 1 Count Incremented to 1");
+            Assert(paperTarget.TotalScore == 10, "Shot 1 Score Equals 10");
+            Assert(paperTarget.ExtremeSpreadCm == 0f, "Single Shot Grouping Extreme Spread Equals 0.0 cm");
+
+            // Shot 2: at (0.06, 0.03) -> Distance is 0.04m = 4.0 cm -> 9 pts
+            paperTarget.TakeDamage(new DamageInfo(25f, paperGo.transform.position + new Vector3(0.06f, 0.03f, 0f), Vector3.back, Vector3.forward, HitType.Body, HandSide.Right));
+            Assert(paperTarget.ShotCount == 2, "Shot 2 Count Incremented to 2");
+            Assert(paperTarget.TotalScore == 19, "Cumulative Score Equals 19 (10 + 9)");
+            Assert(Mathf.Abs(paperTarget.ExtremeSpreadCm - 4.0f) < 0.1f, "Extreme Spread Computed to 4.0 cm");
+
+            // Shot 3: at (-0.02, 0.03) -> Max Distance is from (-0.02) to (0.06) = 0.08m = 8.0 cm -> 10 pts
+            paperTarget.TakeDamage(new DamageInfo(25f, paperGo.transform.position + new Vector3(-0.02f, 0.03f, 0f), Vector3.back, Vector3.forward, HitType.Body, HandSide.Left));
+            Assert(paperTarget.ShotCount == 3, "Shot 3 Count Incremented to 3");
+            Assert(paperTarget.TotalScore == 29, "Cumulative Score Equals 29 (10 + 9 + 10)");
+            Assert(Mathf.Abs(paperTarget.ExtremeSpreadCm - 8.0f) < 0.1f, "Extreme Spread Computed to 8.0 cm");
+
+            // Verify isotropic metric coordinates on scaled target sheet (e.g. 0.55m x 0.85m)
+            scaledPaperGo = new GameObject("_TestScaledPaper");
+            scaledPaperGo.transform.localScale = new Vector3(0.55f, 0.85f, 0.02f);
+            var scaledPaper = scaledPaperGo.AddComponent<PaperTarget>();
+            var scaledAwake = typeof(PaperTarget).GetMethod("Awake", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            scaledAwake.Invoke(scaledPaper, null);
+
+            // Hit 4cm horizontally (0.04m, 0.0m) -> must score 10 pts inside 0.05m radius
+            scaledPaper.TakeDamage(new DamageInfo(25f, scaledPaperGo.transform.position + new Vector3(0.04f, 0f, 0f), Vector3.back, Vector3.forward, HitType.Body, HandSide.Left));
+            Assert(scaledPaper.LastScore == 10, "Scaled Target 4cm Hit Accurately Scores 10 Pts (Isotropic)");
+
+            // Hit -4cm horizontally (-0.04m, 0.0m) -> distance between hits is 8.0 cm
+            scaledPaper.TakeDamage(new DamageInfo(25f, scaledPaperGo.transform.position + new Vector3(-0.04f, 0f, 0f), Vector3.back, Vector3.forward, HitType.Body, HandSide.Right));
+            Assert(Mathf.Abs(scaledPaper.ExtremeSpreadCm - 8.0f) < 0.1f, "Scaled Target Extreme Spread Correctly Equals 8.0 cm");
+            Assert(scaledPaper.RecordedShotCount == 2, "RecordedShotCount Correctly Tracks 2 Shots");
+            Assert(Mathf.Approximately(scaledPaper.GetHitCoordinate(0).x, 0.04f), "GetHitCoordinate Returns True Metric Hit X (0.04m)");
+
+            // Fresh Paper Target Reset
+            paperTarget.FreshPaper();
+            Assert(paperTarget.ShotCount == 0, "FreshPaper Cleared Shot Count");
+            Assert(paperTarget.TotalScore == 0, "FreshPaper Cleared Total Score");
+            Assert(paperTarget.ExtremeSpreadCm == 0f, "FreshPaper Reset Extreme Spread to 0.0 cm");
+
+            // -----------------------------------------------------------
+            // TEST 22: Proximity Cyber-Terminal & Instantaneous Steel Reset
+            // -----------------------------------------------------------
+            termGo = new GameObject("_TestTerminal");
+            var terminal = termGo.AddComponent<RangeTerminal>();
+            terminal.trolley = trolley;
+            terminal.paperTarget = paperTarget;
+            terminal.steelPoppers = new PopperTarget[] { popper };
+
+            Assert(!terminal.isPlayerInside, "Terminal Initially in Standby (Player Outside)");
+
+            terminal.SetPlayerInside(true);
+            Assert(terminal.isPlayerInside, "Terminal Activated When Player Steps Into Stall");
+
+            terminal.SendTo25M();
+            Assert(Mathf.Approximately(trolley.TargetDistance, 25.0f), "Terminal Dispatched SendTo25M");
+
+            terminal.RecallTarget();
+            Assert(Mathf.Approximately(trolley.TargetDistance, 0.8f), "Terminal Dispatched RecallTarget (0.8m)");
+
+            // Knock down popper
+            popper.TakeDamage(new DamageInfo(200f, popperGo.transform.position, Vector3.back, Vector3.forward, HitType.Body, HandSide.Left));
+            Assert(!popper.IsAlive, "Popper Target Knocked Down by Lethal Hit");
+
+            // Instantly reset via booth terminal command
+            terminal.ResetSteelTargets();
+            Assert(popper.IsAlive, "Popper Target Instantly Reset & Raised by Booth Terminal");
+            Assert(popper.CurrentHealth == 100f, "Popper Target Health Restored to 100 by Terminal Reset");
+
+            // Terminal Holographic Telemetry & ASCII Target Schematic
+            textGo = new GameObject("_TestTerminalText");
+            var tm = textGo.AddComponent<TextMesh>();
+            terminal.terminalTextMesh = tm;
+            terminal.UpdateDisplay();
+
+            Assert(tm.text.Contains("TARGET PLOT:"), "Terminal Renders Target Schematic");
+            Assert(tm.text.Contains("MOA"), "Terminal Computes MOA Telemetry");
+
+            // Stall Proximity Trigger Rigidbody & CharacterController interaction
+            trigGo = new GameObject("_TestTrigger");
+            var trigCol = trigGo.AddComponent<BoxCollider>();
+            trigCol.isTrigger = true;
+            var trigRb = trigGo.AddComponent<Rigidbody>();
+            trigRb.isKinematic = true;
+            var trigProxy = trigGo.AddComponent<RangeTerminalTriggerProxy>();
+            trigProxy.terminal = terminal;
+
+            Assert(trigRb.isKinematic, "Stall Trigger Rigidbody Is Kinematic");
+
+            testCharGo = new GameObject("_TestChar");
+            testCharGo.tag = "Player";
+            var testCc = testCharGo.AddComponent<CharacterController>();
+            var onTriggerEnter = typeof(RangeTerminalTriggerProxy).GetMethod("OnTriggerEnter", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            onTriggerEnter.Invoke(trigProxy, new object[] { testCc });
+            Assert(terminal.isPlayerInside, "Proxy OnTriggerEnter Activated Terminal for CharacterController");
+
+            var onTriggerExit = typeof(RangeTerminalTriggerProxy).GetMethod("OnTriggerExit", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            onTriggerExit.Invoke(trigProxy, new object[] { testCc });
+            Assert(!terminal.isPlayerInside, "Proxy OnTriggerExit Deactivated Terminal for CharacterController");
+
+            // -----------------------------------------------------------
+            // TEST 23: Brass Shell Casing Pool Lifecycle & Non-Alloc Ejection
+            // -----------------------------------------------------------
+            shellPoolGo = new GameObject("_TestShellPool");
+            var shellPool = shellPoolGo.AddComponent<ShellCasingPool>();
+            shellPool.combat = combat;
+            var shellAwake = typeof(ShellCasingPool).GetMethod("Awake", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            shellAwake.Invoke(shellPool, null);
+
+            Assert(shellPool.AvailableCount == shellPool.poolSize, "Shell Casing Pool Prewarmed All Instances");
+            Assert(shellPool.ActiveCasingCount == 0, "Initial Active Shell Casing Count is 0");
+
+            var firstCasingCol = shellPoolGo.GetComponentInChildren<CapsuleCollider>(true);
+            Assert(firstCasingCol != null && firstCasingCol.sharedMaterial != null, "Shell Casings Have Assigned Physics Material");
+            Assert(firstCasingCol.sharedMaterial.bounciness > 0.3f, "Shell Casings Have Realistic Brass Bounciness");
+
+            // Eject casing from Left pistol
+            shellPool.EjectCasing(HandSide.Left, new Vector3(-0.25f, 1.15f, 0.45f), Vector3.forward);
+            Assert(shellPool.ActiveCasingCount == 1, "Active Shell Count Incremented on Left Ejection");
+            Assert(shellPool.AvailableCount == shellPool.poolSize - 1, "Available Shell Count Decremented");
+
+            // Eject casing from Right pistol
+            shellPool.EjectCasing(HandSide.Right, new Vector3(0.25f, 1.15f, 0.45f), Vector3.forward);
+            Assert(shellPool.ActiveCasingCount == 2, "Active Shell Count Incremented on Right Ejection");
+
+            // Recycle all casings
+            shellPool.RecycleAll();
+            Assert(shellPool.ActiveCasingCount == 0, "RecycleAll Restored Active Count to 0");
+            Assert(shellPool.AvailableCount == shellPool.poolSize, "RecycleAll Restored All Casings to Available Pool");
+            }
+            finally
+            {
+                // -----------------------------------------------------------
+                // Clean up test game objects (Guaranteed cleanup under try-finally)
+                // -----------------------------------------------------------
+                if (playerGo != null) UnityEngine.Object.DestroyImmediate(playerGo);
+                if (targetGo != null) UnityEngine.Object.DestroyImmediate(targetGo);
+                if (railGo != null) UnityEngine.Object.DestroyImmediate(railGo);
+                if (testCamGo != null) UnityEngine.Object.DestroyImmediate(testCamGo);
+                if (wallGo != null) UnityEngine.Object.DestroyImmediate(wallGo);
+                if (liveTargetGo != null) UnityEngine.Object.DestroyImmediate(liveTargetGo);
+                if (camGo != null) UnityEngine.Object.DestroyImmediate(camGo);
+                if (occludedTargetGo != null) UnityEngine.Object.DestroyImmediate(occludedTargetGo);
+                if (occluderWall != null) UnityEngine.Object.DestroyImmediate(occluderWall);
+                if (knockGo != null) UnityEngine.Object.DestroyImmediate(knockGo);
+                if (popperGo != null) UnityEngine.Object.DestroyImmediate(popperGo);
+                if (lockPlayerGo != null) UnityEngine.Object.DestroyImmediate(lockPlayerGo);
+                if (lockCamGo != null) UnityEngine.Object.DestroyImmediate(lockCamGo);
+                if (t1Go != null) UnityEngine.Object.DestroyImmediate(t1Go);
+                if (t2Go != null) UnityEngine.Object.DestroyImmediate(t2Go);
+                if (yoruGo != null) UnityEngine.Object.DestroyImmediate(yoruGo);
+                if (yoruTargetGo != null) UnityEngine.Object.DestroyImmediate(yoruTargetGo);
+                if (crateGo != null) UnityEngine.Object.DestroyImmediate(crateGo);
+                if (trolleyGo != null) UnityEngine.Object.DestroyImmediate(trolleyGo);
+                if (paperGo != null) UnityEngine.Object.DestroyImmediate(paperGo);
+                if (scaledPaperGo != null) UnityEngine.Object.DestroyImmediate(scaledPaperGo);
+                if (termGo != null) UnityEngine.Object.DestroyImmediate(termGo);
+                if (textGo != null) UnityEngine.Object.DestroyImmediate(textGo);
+                if (trigGo != null) UnityEngine.Object.DestroyImmediate(trigGo);
+                if (testCharGo != null) UnityEngine.Object.DestroyImmediate(testCharGo);
+                if (shellPoolGo != null) UnityEngine.Object.DestroyImmediate(shellPoolGo);
+
+                ShootingTarget.ActiveTargets.RemoveAll(t => t == null);
+                LockOnTarget.All.RemoveAll(t => t == null);
+                Physics.SyncTransforms();
+            }
 
             log.AppendLine("======================================================");
             log.AppendLine($"[CombatSystemVerifier] ALL TESTS PASSED! ({passCount}/{totalTests})");

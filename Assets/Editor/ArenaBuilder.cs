@@ -10,10 +10,13 @@ using ZeroProtocol.Player;
 namespace ZeroProtocol.EditorTools
 {
     /// <summary>
-    /// Builds the cyberpunk test arena scene:
-    /// Multi-lane firing range (10m, 20m, 30m, 50m), shooting stalls, overhead neon signage,
-    /// floor lane markings, ammo resupply crate, hybrid reactive targets (dummies, steel poppers, moving rail targets),
-    /// Yoru character controller, combat systems, and third-person camera.
+    /// Builds the high-end cyberpunk shooting range arena scene:
+    /// Enclosed Cyberpunk Firing Bay (32m x 70m x 6.5m) with acoustic ceiling baffles,
+    /// bullet trap backstop at Z = 60m, 4 operational firing stalls with glass dividers,
+    /// counters, brass catch trays, overhead neon lane signs, motorized target trolley
+    /// carriers (0.8m to 25m), dynamic paper bullseye targets with hole decals,
+    /// deep reactive steel poppers, moving rail target, proximity cyber-terminals,
+    /// brass shell casing pooling, Yoru controller, and decoupled Gun-Fu combat.
     /// </summary>
     public static class ArenaBuilder
     {
@@ -29,130 +32,306 @@ namespace ZeroProtocol.EditorTools
             EditorSceneManager.SaveOpenScenes();
 
             Directory.CreateDirectory(MatDir);
-            var floorMat = MakeMat("ArenaGrid", new Color(1f, 1f, 1f), GridTexture(), 80f);
+            var floorMat = MakeMat("ArenaGrid", new Color(1f, 1f, 1f), GridTexture(), 48f);
+            var ceilingMat = MakeMat("ArenaCeiling", new Color(0.12f, 0.13f, 0.16f), null, 1f);
+            var baffleMat = MakeMat("ArenaBaffle", new Color(0.18f, 0.20f, 0.25f), null, 1f);
             var crateMat = MakeMat("ArenaCrate", new Color(0.86f, 0.52f, 0.20f), null, 1f);
-            var blockMat = MakeMat("ArenaBlock", new Color(0.62f, 0.66f, 0.72f), null, 1f);
-            var dummyMat = MakeMat("ArenaDummy", new Color(0.169f, 0.176f, 0.259f), null, 1f);      // Cyberpunk Idle #2B2D42
+            var blockMat = MakeMat("ArenaBlock", new Color(0.22f, 0.24f, 0.28f), null, 1f);
+            var steelMat = MakeMat("ArenaSteel", new Color(0.38f, 0.42f, 0.48f), null, 1f, metallic: 0.85f, smoothness: 0.65f);
+            var brassMat = MakeMat("ArenaBrass", new Color(0.88f, 0.68f, 0.24f), null, 1f, metallic: 0.92f, smoothness: 0.75f);
+            var dummyMat = MakeMat("ArenaDummy", new Color(0.169f, 0.176f, 0.259f), null, 1f);
             var headMat = MakeMat("ArenaDummyHead", new Color(0.24f, 0.26f, 0.35f), null, 1f);
-            var steelMat = MakeMat("ArenaSteel", new Color(0.38f, 0.42f, 0.48f), null, 1f);
-            var neonCyanMat = MakeMat("ArenaNeonCyan", new Color(0.0f, 0.941f, 1.0f), null, 1f, true);
-            var neonYellowMat = MakeMat("ArenaNeonYellow", new Color(1.0f, 0.745f, 0.043f), null, 1f, true);
-            var stripeMat = MakeMat("ArenaStripe", new Color(1.0f, 0.85f, 0.1f), null, 1f, true);
+            var neonCyanMat = MakeMat("ArenaNeonCyan", new Color(0.0f, 0.941f, 1.0f), null, 1f, emissive: true);
+            var neonYellowMat = MakeMat("ArenaNeonYellow", new Color(1.0f, 0.745f, 0.043f), null, 1f, emissive: true);
+            var stripeMat = MakeMat("ArenaStripe", new Color(1.0f, 0.85f, 0.1f), null, 1f, emissive: true);
+            var hazardMat = MakeMat("ArenaHazard", new Color(1f, 1f, 1f), HazardTexture(), 4f, emissive: true);
+            var glassMat = MakeGlassMat("ArenaGlass", new Color(0.25f, 0.75f, 0.85f, 0.35f));
+            var paperMat = MakeMat("ArenaPaperTarget", Color.white, PaperBullseyeTexture(), 1f);
 
             Scene scene = EditorSceneManager.NewScene(NewSceneSetup.DefaultGameObjects, NewSceneMode.Single);
             Directory.CreateDirectory("Assets/Scenes");
 
             var root = new GameObject("Arena").transform;
 
-            // Floor: 80m x 110m centered at Z = 15m, top surface sits at y = 0 (covers Z = -40m to +70m)
+            // -----------------------------------------------------------
+            // 1. ENCLOSED CYBERPUNK FIRING BAY FACILITY
+            // Dimensions: 32m wide (X: -16m to +16m) x 70m long (Z: -10m to +60m) x 6.5m high (Y: 0m to 6.5m)
+            // -----------------------------------------------------------
+            var facility = new GameObject("FacilityEnclosure").transform;
+            facility.SetParent(root);
+
+            // Floor: 32m x 70m centered at Z = 25m, top surface sits at y = 0
             var floor = GameObject.CreatePrimitive(PrimitiveType.Cube);
             floor.name = "Floor";
-            floor.transform.SetParent(root);
-            floor.transform.position = new Vector3(0f, -0.5f, 15f);
-            floor.transform.localScale = new Vector3(80f, 1f, 110f);
+            floor.transform.SetParent(facility);
+            floor.transform.position = new Vector3(0f, -0.5f, 25f);
+            floor.transform.localScale = new Vector3(32f, 1f, 70f);
             floor.GetComponent<Renderer>().sharedMaterial = floorMat;
 
-            // Boundary Walls
-            Box(root, "Wall_North", new Vector3(80f, 5f, 1.2f), new Vector3(0f, 2.5f, 58f), blockMat);
-            Box(root, "Wall_South", new Vector3(80f, 5f, 1.2f), new Vector3(0f, 2.5f, -38f), blockMat);
-            Box(root, "Wall_East", new Vector3(1.2f, 5f, 96f), new Vector3(39.4f, 2.5f, 10f), blockMat);
-            Box(root, "Wall_West", new Vector3(1.2f, 5f, 96f), new Vector3(-39.4f, 2.5f, 10f), blockMat);
+            // Ceiling: 32m x 70m at Y = 6.5m
+            var ceiling = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            ceiling.name = "Ceiling";
+            ceiling.transform.SetParent(facility);
+            ceiling.transform.position = new Vector3(0f, 6.75f, 25f);
+            ceiling.transform.localScale = new Vector3(32f, 0.5f, 70f);
+            ceiling.GetComponent<Renderer>().sharedMaterial = ceilingMat;
 
-            // Arena Props (crates, pillars, platform, stairs)
-            Box(root, "Crate_S", new Vector3(1f, 1f, 1f), new Vector3(16f, 0.5f, 4f), crateMat);
-            Box(root, "Crate_M", new Vector3(1.5f, 1.5f, 1.5f), new Vector3(18f, 0.75f, 6f), crateMat);
-            Box(root, "Crate_L", new Vector3(2f, 2f, 2f), new Vector3(-16f, 1f, 5f), crateMat);
-            Box(root, "Crate_Stack", new Vector3(1f, 1f, 1f), new Vector3(-16f, 2.5f, 5f), crateMat);
-            Box(root, "Pillar_A", new Vector3(1.2f, 5f, 1.2f), new Vector3(-18f, 2.5f, -4f), blockMat);
-            Box(root, "Pillar_B", new Vector3(1.2f, 5f, 1.2f), new Vector3(18f, 2.5f, -4f), blockMat);
-
-            // Stairs and elevated platform
-            for (int i = 0; i < 4; i++)
+            // Acoustic Ceiling Baffles (spaced every 5m from Z = -8m to +56m)
+            var bafflesRoot = new GameObject("CeilingBaffles").transform;
+            bafflesRoot.SetParent(facility);
+            for (float bz = -8f; bz <= 56f; bz += 5.0f)
             {
-                Box(root, "Stair_" + i, new Vector3(3f, 0.3f * (i + 1), 0.8f),
-                    new Vector3(-20f, 0.15f * (i + 1), 8f + 0.8f * i), blockMat);
+                var baffle = Box(bafflesRoot, $"Baffle_Z{bz:F0}", new Vector3(31.5f, 0.6f, 0.18f), new Vector3(0f, 6.1f, bz), baffleMat);
+                var bc = baffle.GetComponent<Collider>();
+                if (bc != null) Object.DestroyImmediate(bc);
             }
-            Box(root, "Platform", new Vector3(6f, 1.2f, 6f), new Vector3(-20f, 0.6f, 14f), blockMat);
+
+            // Facility Perimeter Walls
+            Box(facility, "Wall_West", new Vector3(1f, 6.5f, 70f), new Vector3(-16.5f, 3.25f, 25f), blockMat);
+            Box(facility, "Wall_East", new Vector3(1f, 6.5f, 70f), new Vector3(16.5f, 3.25f, 25f), blockMat);
+            Box(facility, "Wall_South_Rear", new Vector3(32f, 6.5f, 1f), new Vector3(0f, 3.25f, -10.5f), blockMat);
+            Box(facility, "Wall_North_Front", new Vector3(32f, 6.5f, 1f), new Vector3(0f, 3.25f, 60.5f), blockMat);
 
             // -----------------------------------------------------------
-            // MULTI-LANE FIRING RANGE (Player starts at Z = -4)
-            // Lane 1: X = -9m, Distance = 10m (Z = 6m) -> Silhouette Dummy
-            // Lane 2: X = -3m, Distance = 20m (Z = 16m) -> Silhouette Dummy
-            // Lane 3: X = 3m, Distance = 30m (Z = 26m) -> Steel Popper Target
-            // Lane 4: X = 9m, Distance = 50m (Z = 46m) -> Elevated Moving Rail Target
+            // 2. BULLET TRAP BACKSTOP AT Z = 60m
+            // Angled heavy steel deflector trap with hazard stripes and warning stencils
+            // -----------------------------------------------------------
+            var backstopRoot = new GameObject("BulletTrapBackstop_60M").transform;
+            backstopRoot.SetParent(facility);
+
+            // Lower angled steel ramp (deflects bullets into trap)
+            var rampLower = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            rampLower.name = "SteelDeflector_Lower";
+            rampLower.transform.SetParent(backstopRoot);
+            rampLower.transform.position = new Vector3(0f, 1.8f, 58.2f);
+            rampLower.transform.rotation = Quaternion.Euler(-32f, 0f, 0f);
+            rampLower.transform.localScale = new Vector3(31.8f, 0.45f, 4.5f);
+            rampLower.GetComponent<Renderer>().sharedMaterial = steelMat;
+
+            // Upper angled steel deflector
+            var rampUpper = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            rampUpper.name = "SteelDeflector_Upper";
+            rampUpper.transform.SetParent(backstopRoot);
+            rampUpper.transform.position = new Vector3(0f, 4.8f, 58.2f);
+            rampUpper.transform.rotation = Quaternion.Euler(32f, 0f, 0f);
+            rampUpper.transform.localScale = new Vector3(31.8f, 0.45f, 4.5f);
+            rampUpper.GetComponent<Renderer>().sharedMaterial = steelMat;
+
+            // Hazard stripe fascia beam
+            var hazardFascia = Box(backstopRoot, "HazardFascia", new Vector3(32f, 0.75f, 0.2f), new Vector3(0f, 3.3f, 56.5f), hazardMat);
+            var hfc = hazardFascia.GetComponent<Collider>();
+            if (hfc != null) Object.DestroyImmediate(hfc);
+
+            // Warning Stencil
+            CreateWarningSign(backstopRoot, "DANGER // BULLET TRAP // 60M BACKSTOP", new Vector3(0f, 3.3f, 56.35f), new Color(1.0f, 0.85f, 0.05f));
+
+            // -----------------------------------------------------------
+            // 3. FIRING STALLS & SHOOTING LANES (Lanes 1 to 4 at X = -9m, -3m, +3m, +9m)
+            // Stalls: Solid acoustic partitions (1.4m), tempered glass (0.8m), heavy counters,
+            // brass catch trays, overhead neon signs, downlights, and proximity cyber-terminals.
             // -----------------------------------------------------------
             var rangeRoot = new GameObject("FiringRange").transform;
             rangeRoot.SetParent(root);
 
-            // 1. Shooting Stalls & Dividers at Booth (Z = -4m)
+            float[] laneX = { -9f, -3f, 3f, 9f };
+            string[] laneNames = { "LANE 01", "LANE 02", "LANE 03", "LANE 04" };
             float[] dividerX = { -12f, -6f, 0f, 6f, 12f };
+
+            // Stall Dividers (Z from -4.5m to -1.0m, length 3.5m)
             for (int i = 0; i < dividerX.Length; i++)
             {
-                // Stall partition wall
-                Box(rangeRoot, $"StallDivider_{i}", new Vector3(0.2f, 1.4f, 3.5f), new Vector3(dividerX[i], 0.7f, -4f), blockMat);
-                // Safety railing top
-                var rail = Box(rangeRoot, $"StallRailing_{i}", new Vector3(0.25f, 0.08f, 3.5f), new Vector3(dividerX[i], 1.44f, -4f), neonCyanMat);
-                var col = rail.GetComponent<Collider>();
+                // Solid acoustic partition wall (height 1.4m)
+                Box(rangeRoot, $"StallDivider_{i}_Lower", new Vector3(0.2f, 1.4f, 3.5f), new Vector3(dividerX[i], 0.7f, -2.75f), blockMat);
+
+                // Safety tempered glass upper panel (height 0.8m, Y: 1.4m to 2.2m)
+                var glass = Box(rangeRoot, $"StallDivider_{i}_Glass", new Vector3(0.06f, 0.8f, 3.5f), new Vector3(dividerX[i], 1.8f, -2.75f), glassMat);
+                var gc = glass.GetComponent<Collider>();
+                if (gc != null) Object.DestroyImmediate(gc);
+
+                // Top neon accent runner
+                var rail = Box(rangeRoot, $"StallDivider_{i}_TopRail", new Vector3(0.22f, 0.06f, 3.5f), new Vector3(dividerX[i], 2.23f, -2.75f), neonCyanMat);
+                var rc = rail.GetComponent<Collider>();
+                if (rc != null) Object.DestroyImmediate(rc);
+            }
+
+            // Overhead Gantry Frame & Neon Lane Signs at Z = -1.0m, Y = 3.6m
+            var gantryBeam = Box(rangeRoot, "OverheadGantry", new Vector3(25f, 0.25f, 0.35f), new Vector3(0f, 3.6f, -1.0f), blockMat);
+            var gbc = gantryBeam.GetComponent<Collider>();
+            if (gbc != null) Object.DestroyImmediate(gbc);
+
+            // Floor Lane Dividers along Z (from Z = -1m to Z = 56m)
+            for (int i = 0; i < dividerX.Length; i++)
+            {
+                float runnerLen = 57f;
+                var runner = Box(rangeRoot, $"FloorRunner_{i}", new Vector3(0.08f, 0.015f, runnerLen),
+                    new Vector3(dividerX[i], 0.008f, -1f + runnerLen * 0.5f), neonCyanMat);
+                var col = runner.GetComponent<Collider>();
                 if (col != null) Object.DestroyImmediate(col);
             }
 
-            // Overhead Gantry Frame & Neon Distance Signs (Y = 3.6m, Z = -2.5m)
-            var gantryBeam = Box(rangeRoot, "OverheadGantry", new Vector3(24.5f, 0.25f, 0.4f), new Vector3(0f, 3.6f, -2.5f), blockMat);
-            var gantryCol = gantryBeam.GetComponent<Collider>();
-            if (gantryCol != null) Object.DestroyImmediate(gantryCol);
+            // Distance Threshold Floor Stripes
+            CreateFloorThresholdStripe(rangeRoot, "Threshold_5M", new Vector3(0f, 0.008f, 4f), 24f, stripeMat);
+            CreateFloorThresholdStripe(rangeRoot, "Threshold_10M", new Vector3(0f, 0.008f, 9f), 24f, stripeMat);
+            CreateFloorThresholdStripe(rangeRoot, "Threshold_15M", new Vector3(0f, 0.008f, 14f), 24f, stripeMat);
+            CreateFloorThresholdStripe(rangeRoot, "Threshold_25M", new Vector3(0f, 0.008f, 24f), 24f, stripeMat);
 
-            CreateNeonSign(rangeRoot, "10M", new Vector3(-9f, 3.6f, -2.5f), blockMat, new Color(0.0f, 0.941f, 1.0f));
-            CreateNeonSign(rangeRoot, "20M", new Vector3(-3f, 3.6f, -2.5f), blockMat, new Color(0.0f, 0.941f, 1.0f));
-            CreateNeonSign(rangeRoot, "30M", new Vector3(3f, 3.6f, -2.5f), blockMat, new Color(1.0f, 0.745f, 0.043f));
-            CreateNeonSign(rangeRoot, "50M", new Vector3(9f, 3.6f, -2.5f), blockMat, new Color(1.0f, 0.2f, 0.4f));
+            // Rear Ammo Resupply Counter at Z = -7.5m
+            CreateAmmoCrate(rangeRoot, "AmmoResupplyStation", new Vector3(-6f, 0f, -7.5f), crateMat, neonCyanMat);
+            CreateAmmoCrate(rangeRoot, "AmmoResupplyStation_R", new Vector3(6f, 0f, -7.5f), crateMat, neonCyanMat);
 
-            // Floor Lane Divider Stripes along Z
-            for (int i = 0; i < dividerX.Length; i++)
+            // Construct each of the 4 Firing Lanes with full systems
+            for (int laneIdx = 0; laneIdx < laneX.Length; laneIdx++)
             {
-                float laneLen = (i == 4) ? 52f : ((i == 3) ? 32f : 22f);
-                var line = Box(rangeRoot, $"FloorDividerLine_{i}", new Vector3(0.08f, 0.01f, laneLen),
-                    new Vector3(dividerX[i], 0.005f, -2.25f + laneLen * 0.5f), neonCyanMat);
-                var c = line.GetComponent<Collider>();
-                if (c != null) Object.DestroyImmediate(c);
+                float lx = laneX[laneIdx];
+                string laneId = laneNames[laneIdx];
+
+                var laneRoot = new GameObject(laneId).transform;
+                laneRoot.SetParent(rangeRoot);
+
+                // Overhead Neon Lane Sign
+                CreateNeonSign(laneRoot, laneId, new Vector3(lx, 3.6f, -1.0f), blockMat, new Color(0.0f, 0.941f, 1.0f));
+
+                // Recessed Overhead Downlight in Booth
+                var downlightGo = new GameObject("Downlight");
+                downlightGo.transform.SetParent(laneRoot, false);
+                downlightGo.transform.position = new Vector3(lx, 4.2f, -2.75f);
+                var spot = downlightGo.AddComponent<Light>();
+                spot.type = LightType.Spot;
+                spot.spotAngle = 75f;
+                spot.range = 6.5f;
+                spot.intensity = 1.6f;
+                spot.color = new Color(0.9f, 0.95f, 1.0f);
+                spot.shadows = LightShadows.Soft;
+
+                // Heavy Shooting Counter (top at Y = 1.0m, Z = -1.0m)
+                var counter = Box(laneRoot, "ShootingCounter", new Vector3(2.4f, 1.0f, 0.6f), new Vector3(lx, 0.5f, -1.0f), blockMat);
+
+                // Brass Catch Tray on Counter Top
+                var tray = Box(laneRoot, "BrassCatchTray", new Vector3(0.9f, 0.04f, 0.45f), new Vector3(lx + 0.55f, 1.02f, -1.0f), brassMat);
+
+                // Stall Trigger Volume (detects Yoru entering/exiting stall)
+                // Kinematic Rigidbody guarantees PhysX dispatches trigger events to CharacterController
+                var triggerGo = new GameObject("StallProximityTrigger");
+                triggerGo.transform.SetParent(laneRoot, false);
+                triggerGo.transform.position = new Vector3(lx, 1.25f, -2.75f);
+                var trigCol = triggerGo.AddComponent<BoxCollider>();
+                trigCol.isTrigger = true;
+                trigCol.size = new Vector3(2.6f, 2.4f, 3.5f);
+                var trigRb = triggerGo.AddComponent<Rigidbody>();
+                trigRb.isKinematic = true;
+
+                // Overhead Dual Steel Guide Rails (spanning Z = -0.5m to Z = 25.5m at Y = 3.4m)
+                var trackRoot = new GameObject("OverheadTrackBeam").transform;
+                trackRoot.SetParent(laneRoot, false);
+                float trackLen = 26f;
+                var railL = Box(trackRoot, "Rail_L", new Vector3(0.06f, 0.12f, trackLen), new Vector3(lx - 0.25f, 3.4f, 12.5f), steelMat);
+                var railR = Box(trackRoot, "Rail_R", new Vector3(0.06f, 0.12f, trackLen), new Vector3(lx + 0.25f, 3.4f, 12.5f), steelMat);
+                var colL = railL.GetComponent<Collider>(); if (colL != null) Object.DestroyImmediate(colL);
+                var colR = railR.GetComponent<Collider>(); if (colR != null) Object.DestroyImmediate(colR);
+
+                // Motorized Target Trolley Carrier
+                var trolleyGo = new GameObject("TargetTrolley");
+                trolleyGo.transform.SetParent(laneRoot, false);
+                trolleyGo.transform.position = new Vector3(lx, 3.4f, 9.0f); // Initially at 10m stop (Z = 9.0m)
+
+                var trolley = trolleyGo.AddComponent<TargetTrolley>();
+                trolley.boothOriginZ = -1.0f;
+                trolley.smoothTime = 0.60f;
+                trolley.maxSpeed = 8.5f;
+
+                // Carriage Body
+                var carriage = Box(trolleyGo.transform, "CarriageBody", new Vector3(0.7f, 0.18f, 0.45f), new Vector3(lx, 3.32f, 9.0f), blockMat);
+                trolley.carriageTransform = carriage.transform;
+
+                // Suspension Cables hanging down to paper target
+                var suspRoot = new GameObject("SuspensionCables").transform;
+                suspRoot.SetParent(trolleyGo.transform, false);
+                var cableL = Box(suspRoot, "Cable_L", new Vector3(0.015f, 1.4f, 0.015f), new Vector3(lx - 0.24f, 2.5f, 9.0f), steelMat);
+                var cableR = Box(suspRoot, "Cable_R", new Vector3(0.015f, 1.4f, 0.015f), new Vector3(lx + 0.24f, 2.5f, 9.0f), steelMat);
+                var cl = cableL.GetComponent<Collider>(); if (cl != null) Object.DestroyImmediate(cl);
+                var cr = cableR.GetComponent<Collider>(); if (cr != null) Object.DestroyImmediate(cr);
+
+                // Paper Bullseye Target Sheet: Unscaled carrier root ensures isotropic coordinate metrics
+                // and prevents non-uniform shearing on dynamic bullet hole decals
+                var paperTargetGo = new GameObject("PaperTargetSheet");
+                paperTargetGo.transform.SetParent(trolleyGo.transform, false);
+                paperTargetGo.transform.position = new Vector3(lx, 1.4f, 9.0f);
+                paperTargetGo.transform.localScale = Vector3.one;
+
+                var paperCol = paperTargetGo.AddComponent<BoxCollider>();
+                paperCol.size = new Vector3(0.55f, 0.85f, 0.02f);
+
+                var visualGo = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                visualGo.name = "SheetVisual";
+                visualGo.transform.SetParent(paperTargetGo.transform, false);
+                visualGo.transform.localPosition = Vector3.zero;
+                visualGo.transform.localScale = new Vector3(0.55f, 0.85f, 0.02f);
+                visualGo.GetComponent<Renderer>().sharedMaterial = paperMat;
+                var visCol = visualGo.GetComponent<Collider>();
+                if (visCol != null) Object.DestroyImmediate(visCol);
+
+                var paperTarget = paperTargetGo.AddComponent<PaperTarget>();
+                paperTarget.paperRenderer = visualGo.GetComponent<Renderer>();
+                paperTarget.sheetWidth = 0.55f;
+                paperTarget.sheetHeight = 0.85f;
+                trolley.paperTarget = paperTarget;
+
+                // Lock-On target support for paper target
+                var lockPaper = paperTargetGo.AddComponent<LockOnTarget>();
+                lockPaper.aimHeight = 0f;
+
+                // Deep Reactive Steel Targets in Lane
+                // 30m Steel Popper (drops flat 90 degrees, auto resets)
+                var popperGo = CreatePopperTarget(laneRoot, $"Popper_30M_{laneId}", new Vector3(lx, 0f, 29.0f), steelMat, blockMat);
+                var popper = popperGo.GetComponentInChildren<PopperTarget>();
+
+                // 40m Reactive Targets
+                GameObject silTargetGo = null;
+                if (laneIdx == 1 || laneIdx == 2)
+                {
+                    silTargetGo = CreateShootingTarget(laneRoot, $"Silhouette_40M_{laneId}", new Vector3(lx, 0f, 39.0f), dummyMat, headMat);
+                }
+
+                // 50m Elevated Moving Rail Target in Lane 4
+                if (laneIdx == 3)
+                {
+                    CreateElevatedRailTarget(laneRoot, "MovingRailTarget_50M", new Vector3(lx - 2.5f, 1.6f, 49.0f), new Vector3(5f, 0f, 0f), blockMat, dummyMat, headMat);
+                }
+
+                // Proximity Floating Holographic Cyber-Terminal
+                var terminalGo = CreateCyberTerminal(laneRoot, laneId, new Vector3(lx - 0.65f, 1.0f, -0.95f), blockMat, neonCyanMat);
+                var terminal = terminalGo.GetComponent<RangeTerminal>();
+                terminal.laneName = laneId;
+                terminal.trolley = trolley;
+                terminal.paperTarget = paperTarget;
+                terminal.steelPoppers = (popper != null) ? new PopperTarget[] { popper } : new PopperTarget[0];
+
+                var laneTargetsList = new System.Collections.Generic.List<ShootingTarget>();
+                if (popper != null) laneTargetsList.Add(popper);
+                if (silTargetGo != null)
+                {
+                    var st = silTargetGo.GetComponentInChildren<ShootingTarget>();
+                    if (st != null) laneTargetsList.Add(st);
+                }
+                terminal.laneTargets = laneTargetsList.ToArray();
+
+                // Wire proximity trigger to terminal
+                var trigProxy = triggerGo.AddComponent<RangeTerminalTriggerProxy>();
+                trigProxy.terminal = terminal;
             }
 
-            // High-Contrast Floor Threshold Stripes (Distance Markers)
-            CreateFloorThresholdStripe(rangeRoot, "Threshold_10M", new Vector3(-9f, 0.006f, 6f), 5.8f, stripeMat);
-            CreateFloorThresholdStripe(rangeRoot, "Threshold_20M", new Vector3(-3f, 0.006f, 16f), 5.8f, stripeMat);
-            CreateFloorThresholdStripe(rangeRoot, "Threshold_30M", new Vector3(3f, 0.006f, 26f), 5.8f, stripeMat);
-            CreateFloorThresholdStripe(rangeRoot, "Threshold_50M", new Vector3(9f, 0.006f, 46f), 5.8f, stripeMat);
-
-            // Interactive Ammo Resupply Station at Booth (X = -13m, Z = -4m)
-            CreateAmmoCrate(rangeRoot, "AmmoResupplyStation", new Vector3(-13.2f, 0f, -4f), crateMat, neonCyanMat);
-
-            // Targets in the 4 Lanes
-            // Lane 1 (10m): Silhouette Dummy
-            CreateShootingTarget(rangeRoot, "Target_10m_Dummy", new Vector3(-9f, 0f, 6f), dummyMat, headMat);
-
-            // Lane 2 (20m): Silhouette Dummy
-            CreateShootingTarget(rangeRoot, "Target_20m_Dummy", new Vector3(-3f, 0f, 16f), dummyMat, headMat);
-
-            // Lane 3 (30m): Steel Popper Target (drops flat 90 deg, respawns after 2.5s)
-            CreatePopperTarget(rangeRoot, "Target_30m_Popper", new Vector3(3f, 0f, 26f), steelMat, blockMat);
-
-            // Lane 4 (50m): Elevated Moving Rail Target (sinusoidal motion with 0.8s turnaround pause)
-            CreateElevatedRailTarget(rangeRoot, "Target_50m_Rail", new Vector3(6.5f, 1.4f, 46f), new Vector3(5f, 0f, 0f), blockMat, dummyMat, headMat);
-
-            // Auxiliary Targets in Arena
-            CreateShootingTarget(root, "Dummy_Aux_1", new Vector3(0f, 0f, 12f), dummyMat, headMat);
-            CreateShootingTarget(root, "Dummy_Aux_2", new Vector3(-18f, 0f, 12f), dummyMat, headMat);
-            CreateShootingTarget(root, "Dummy_Aux_3", new Vector3(18f, 0f, 18f), dummyMat, headMat);
-
             // -----------------------------------------------------------
-            // PLAYER & CAMERA RIG SETUP
+            // 4. PLAYER CHARACTER RIG & COMBAT PIPELINE
+            // Spawn inside Lane 2 booth at X = -3m, Z = -2.5m facing +Z
             // -----------------------------------------------------------
             var yoruPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(YoruPrefabPath);
             var player = new GameObject("Player");
             player.tag = "Player";
-            player.transform.position = new Vector3(0f, 0.05f, -4f);
+            player.transform.position = new Vector3(-3f, 0.05f, -2.5f);
             var cc = player.AddComponent<CharacterController>();
             cc.height = 1.5f; cc.radius = 0.28f; cc.center = new Vector3(0f, 0.78f, 0f);
             cc.stepOffset = 0.35f; cc.slopeLimit = 50f; cc.skinWidth = 0.03f;
+
             if (yoruPrefab != null)
             {
                 var model = (GameObject)PrefabUtility.InstantiatePrefab(yoruPrefab);
@@ -199,6 +378,10 @@ namespace ZeroProtocol.EditorTools
             var vfx = player.AddComponent<GunVFX>();
             vfx.combat = combat;
 
+            // Auto-wire Brass Shell Casing Pool
+            var shellPool = player.AddComponent<ShellCasingPool>();
+            shellPool.combat = combat;
+
             // Main Camera & Camera Rig
             var cam = Camera.main;
             cam.tag = "MainCamera";
@@ -216,23 +399,23 @@ namespace ZeroProtocol.EditorTools
 
             controller.cameraTransform = cam.transform;
             lockOnSystem.cameraRig = rig;
-            cam.transform.position = new Vector3(0f, 2.2f, -9f);
+            cam.transform.position = new Vector3(-3f, 2.2f, -7.5f);
 
             PostFxBuilder.Add(cam);
 
             var dirLight = Object.FindFirstObjectByType<Light>();
-            if (dirLight != null) { dirLight.shadows = LightShadows.Soft; dirLight.intensity = 1.1f; }
+            if (dirLight != null) { dirLight.shadows = LightShadows.Soft; dirLight.intensity = 0.95f; }
 
             EditorSceneManager.SaveScene(scene, ScenePath);
             AssetDatabase.SaveAssets();
-            Debug.Log("[ZeroProtocol] Multi-Lane Firing Range & Arena built: " + ScenePath);
+            Debug.Log("[ZeroProtocol] Enclosed Cyberpunk Firing Bay Arena built: " + ScenePath);
         }
 
         static GameObject Box(Transform parent, string name, Vector3 size, Vector3 pos, Material mat)
         {
             var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
             go.name = name;
-            go.transform.SetParent(parent);
+            go.transform.SetParent(parent, false);
             go.transform.position = pos;
             go.transform.localScale = size;
             go.GetComponent<Renderer>().sharedMaterial = mat;
@@ -261,7 +444,7 @@ namespace ZeroProtocol.EditorTools
             var backplate = GameObject.CreatePrimitive(PrimitiveType.Cube);
             backplate.name = "Backplate";
             backplate.transform.SetParent(signRoot.transform, false);
-            backplate.transform.localScale = new Vector3(1.8f, 0.65f, 0.12f);
+            backplate.transform.localScale = new Vector3(2.2f, 0.70f, 0.12f);
             backplate.GetComponent<Renderer>().sharedMaterial = bgMat;
             var col = backplate.GetComponent<Collider>();
             if (col != null) Object.DestroyImmediate(col);
@@ -281,10 +464,90 @@ namespace ZeroProtocol.EditorTools
             return signRoot;
         }
 
+        static GameObject CreateWarningSign(Transform parent, string text, Vector3 pos, Color textColor)
+        {
+            var textGo = new GameObject("WarningText");
+            textGo.transform.SetParent(parent, false);
+            textGo.transform.position = pos;
+            var tm = textGo.AddComponent<TextMesh>();
+            tm.text = text;
+            tm.fontSize = 58;
+            tm.characterSize = 0.11f;
+            tm.alignment = TextAlignment.Center;
+            tm.anchor = TextAnchor.MiddleCenter;
+            tm.color = textColor;
+            tm.fontStyle = FontStyle.Bold;
+            return textGo;
+        }
+
+        static GameObject CreateCyberTerminal(Transform parent, string laneName, Vector3 counterBasePos, Material baseMat, Material neonMat)
+        {
+            var termRoot = new GameObject($"CyberTerminal_{laneName}");
+            termRoot.transform.SetParent(parent, false);
+            termRoot.transform.position = counterBasePos;
+
+            // Terminal pedestal mount
+            var pedestal = Box(termRoot.transform, "Pedestal", new Vector3(0.12f, 0.28f, 0.12f), counterBasePos + new Vector3(0f, 0.14f, 0f), baseMat);
+            var pc = pedestal.GetComponent<Collider>(); if (pc != null) Object.DestroyImmediate(pc);
+
+            // Angled Holographic Screen Frame
+            var screenFrame = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            screenFrame.name = "ScreenFrame";
+            screenFrame.transform.SetParent(termRoot.transform, false);
+            screenFrame.transform.position = counterBasePos + new Vector3(0f, 0.40f, 0f);
+            screenFrame.transform.rotation = Quaternion.Euler(22f, 0f, 0f);
+            screenFrame.transform.localScale = new Vector3(0.75f, 0.45f, 0.03f);
+            screenFrame.GetComponent<Renderer>().sharedMaterial = baseMat;
+            var sfc = screenFrame.GetComponent<Collider>(); if (sfc != null) Object.DestroyImmediate(sfc);
+
+            // Screen Display Surface
+            var screenFace = GameObject.CreatePrimitive(PrimitiveType.Quad);
+            screenFace.name = "ScreenFace";
+            screenFace.transform.SetParent(screenFrame.transform, false);
+            screenFace.transform.localPosition = new Vector3(0f, 0f, -0.55f);
+            screenFace.transform.localRotation = Quaternion.Euler(0f, 180f, 0f);
+            screenFace.transform.localScale = new Vector3(0.92f, 0.88f, 1f);
+            screenFace.GetComponent<Renderer>().sharedMaterial = baseMat;
+            var sdc = screenFace.GetComponent<Collider>(); if (sdc != null) Object.DestroyImmediate(sdc);
+
+            // Holographic 3D Text Mesh
+            var textGo = new GameObject("TerminalText");
+            textGo.transform.SetParent(screenFrame.transform, false);
+            textGo.transform.localPosition = new Vector3(-0.45f, 0.40f, -0.60f);
+            textGo.transform.localRotation = Quaternion.Euler(0f, 180f, 0f);
+            var tm = textGo.AddComponent<TextMesh>();
+            tm.fontSize = 28;
+            tm.characterSize = 0.024f;
+            tm.lineSpacing = 1.15f;
+            tm.alignment = TextAlignment.Left;
+            tm.anchor = TextAnchor.UpperLeft;
+            tm.color = new Color(0.0f, 0.941f, 1.0f);
+            tm.fontStyle = FontStyle.Bold;
+
+            // Terminal Holographic Accent Light
+            var lightGo = new GameObject("TerminalLight");
+            lightGo.transform.SetParent(screenFrame.transform, false);
+            lightGo.transform.localPosition = new Vector3(0f, 0f, -0.6f);
+            var lt = lightGo.AddComponent<Light>();
+            lt.type = LightType.Point;
+            lt.range = 1.6f;
+            lt.intensity = 0.8f;
+            lt.color = new Color(0.0f, 0.941f, 1.0f);
+            lt.shadows = LightShadows.None;
+
+            var termComp = termRoot.AddComponent<RangeTerminal>();
+            termComp.laneName = laneName;
+            termComp.terminalTextMesh = tm;
+            termComp.screenRenderer = screenFace.GetComponent<Renderer>();
+            termComp.terminalLight = lt;
+
+            return termRoot;
+        }
+
         static GameObject CreateShootingTarget(Transform parent, string name, Vector3 pos, Material bodyMat, Material headMat)
         {
             var targetRoot = new GameObject(name);
-            targetRoot.transform.SetParent(parent);
+            targetRoot.transform.SetParent(parent, false);
             targetRoot.transform.position = pos;
 
             var basePlate = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
@@ -338,7 +601,7 @@ namespace ZeroProtocol.EditorTools
         static GameObject CreatePopperTarget(Transform parent, string name, Vector3 pos, Material steelMat, Material baseMat)
         {
             var targetRoot = new GameObject(name);
-            targetRoot.transform.SetParent(parent);
+            targetRoot.transform.SetParent(parent, false);
             targetRoot.transform.position = pos;
 
             // Hinge base frame
@@ -406,7 +669,7 @@ namespace ZeroProtocol.EditorTools
         static GameObject CreateElevatedRailTarget(Transform parent, string name, Vector3 startPos, Vector3 offset, Material trackMat, Material dummyMat, Material headMat)
         {
             var railRoot = new GameObject(name);
-            railRoot.transform.SetParent(parent);
+            railRoot.transform.SetParent(parent, false);
             railRoot.transform.position = startPos;
 
             // Elevation Support Pillars
@@ -442,7 +705,7 @@ namespace ZeroProtocol.EditorTools
         static GameObject CreateAmmoCrate(Transform parent, string name, Vector3 pos, Material crateMat, Material neonMat)
         {
             var crateRoot = new GameObject(name);
-            crateRoot.transform.SetParent(parent);
+            crateRoot.transform.SetParent(parent, false);
             crateRoot.transform.position = pos;
 
             var box = GameObject.CreatePrimitive(PrimitiveType.Cube);
@@ -479,7 +742,7 @@ namespace ZeroProtocol.EditorTools
             return crateRoot;
         }
 
-        static Material MakeMat(string name, Color color, Texture2D tex, float tiling, bool emissive = false)
+        static Material MakeMat(string name, Color color, Texture2D tex, float tiling, bool emissive = false, float metallic = 0.1f, float smoothness = 0.15f)
         {
             string path = MatDir + "/" + name + ".mat";
             var mat = AssetDatabase.LoadAssetAtPath<Material>(path);
@@ -489,8 +752,8 @@ namespace ZeroProtocol.EditorTools
                 AssetDatabase.CreateAsset(mat, path);
             }
             mat.SetColor("_BaseColor", color);
-            mat.SetFloat("_Smoothness", emissive ? 0.8f : 0.15f);
-            mat.SetFloat("_Metallic", emissive ? 0f : 0.1f);
+            mat.SetFloat("_Smoothness", emissive ? 0.8f : smoothness);
+            mat.SetFloat("_Metallic", emissive ? 0f : metallic);
             if (emissive)
             {
                 mat.EnableKeyword("_EMISSION");
@@ -505,6 +768,25 @@ namespace ZeroProtocol.EditorTools
             return mat;
         }
 
+        static Material MakeGlassMat(string name, Color color)
+        {
+            string path = MatDir + "/" + name + ".mat";
+            var mat = AssetDatabase.LoadAssetAtPath<Material>(path);
+            if (mat == null)
+            {
+                mat = new Material(Shader.Find("Universal Render Pipeline/Lit"));
+                AssetDatabase.CreateAsset(mat, path);
+            }
+            mat.SetFloat("_Surface", 1f); // Transparent
+            mat.SetFloat("_Blend", 0f);   // Alpha blend
+            mat.SetColor("_BaseColor", color);
+            mat.SetFloat("_Smoothness", 0.95f);
+            mat.SetFloat("_Metallic", 0.1f);
+            mat.renderQueue = 3000;
+            EditorUtility.SetDirty(mat);
+            return mat;
+        }
+
         static Texture2D GridTexture()
         {
             string path = MatDir + "/Grid.png";
@@ -512,7 +794,7 @@ namespace ZeroProtocol.EditorTools
             {
                 const int n = 256;
                 var tex = new Texture2D(n, n, TextureFormat.RGBA32, false);
-                Color fill = new Color(0.32f, 0.35f, 0.39f), line = new Color(0.62f, 0.66f, 0.71f);
+                Color fill = new Color(0.22f, 0.24f, 0.28f), line = new Color(0.45f, 0.48f, 0.55f);
                 for (int y = 0; y < n; y++)
                     for (int x = 0; x < n; x++)
                     {
@@ -531,6 +813,156 @@ namespace ZeroProtocol.EditorTools
                 imp.SaveAndReimport();
             }
             return AssetDatabase.LoadAssetAtPath<Texture2D>(path);
+        }
+
+        static Texture2D HazardTexture()
+        {
+            string path = MatDir + "/HazardStripes.png";
+            if (!File.Exists(path))
+            {
+                const int n = 256;
+                var tex = new Texture2D(n, n, TextureFormat.RGBA32, false);
+                Color yellow = new Color(1.0f, 0.85f, 0.05f);
+                Color black = new Color(0.12f, 0.12f, 0.15f);
+                for (int y = 0; y < n; y++)
+                {
+                    for (int x = 0; x < n; x++)
+                    {
+                        bool stripe = ((x + y) / 24) % 2 == 0;
+                        tex.SetPixel(x, y, stripe ? yellow : black);
+                    }
+                }
+                tex.Apply();
+                File.WriteAllBytes(path, tex.EncodeToPNG());
+                Object.DestroyImmediate(tex);
+                AssetDatabase.ImportAsset(path);
+                var imp = (TextureImporter)AssetImporter.GetAtPath(path);
+                imp.wrapMode = TextureWrapMode.Repeat;
+                imp.mipmapEnabled = true;
+                imp.filterMode = FilterMode.Bilinear;
+                imp.SaveAndReimport();
+            }
+            return AssetDatabase.LoadAssetAtPath<Texture2D>(path);
+        }
+
+        static Texture2D PaperBullseyeTexture()
+        {
+            string path = MatDir + "/PaperBullseye.png";
+            if (!File.Exists(path))
+            {
+                const int n = 512;
+                var tex = new Texture2D(n, n, TextureFormat.RGBA32, false);
+                Color paperBg = new Color(0.08f, 0.09f, 0.12f);
+                Color torso = new Color(0.17f, 0.18f, 0.25f);
+                Color cyanRing = new Color(0.0f, 0.941f, 1.0f);
+                Color yellowRing = new Color(1.0f, 0.745f, 0.043f);
+                Color whiteCross = new Color(0.85f, 0.9f, 1.0f, 0.6f);
+
+                float center = n * 0.5f;
+                float pxPerM = n / 0.55f;
+                float r10 = 0.05f * pxPerM;
+                float r9 = 0.10f * pxPerM;
+                float r8 = 0.16f * pxPerM;
+                float r7 = 0.22f * pxPerM;
+                float torsoW = 0.26f * pxPerM;
+                float torsoH = 0.42f * pxPerM;
+
+                for (int y = 0; y < n; y++)
+                {
+                    for (int x = 0; x < n; x++)
+                    {
+                        float dx = x - center;
+                        float dy = y - center;
+                        float dist = Mathf.Sqrt(dx * dx + dy * dy);
+
+                        Color col = paperBg;
+
+                        // Torso silhouette check
+                        if (Mathf.Abs(dx) <= torsoW && Mathf.Abs(dy) <= torsoH)
+                        {
+                            col = torso;
+                        }
+
+                        // Concentric rings
+                        if (dist <= r10)
+                        {
+                            col = yellowRing;
+                        }
+                        else if (Mathf.Abs(dist - r9) < 2.5f)
+                        {
+                            col = cyanRing;
+                        }
+                        else if (Mathf.Abs(dist - r8) < 2.5f)
+                        {
+                            col = cyanRing;
+                        }
+                        else if (Mathf.Abs(dist - r7) < 2.5f)
+                        {
+                            col = cyanRing;
+                        }
+
+                        // Reticle crosshair lines
+                        if ((Mathf.Abs(dx) < 1.5f || Mathf.Abs(dy) < 1.5f) && dist < r7)
+                        {
+                            col = Color.Lerp(col, whiteCross, 0.7f);
+                        }
+
+                        tex.SetPixel(x, y, col);
+                    }
+                }
+                tex.Apply();
+                File.WriteAllBytes(path, tex.EncodeToPNG());
+                Object.DestroyImmediate(tex);
+                AssetDatabase.ImportAsset(path);
+                var imp = (TextureImporter)AssetImporter.GetAtPath(path);
+                imp.wrapMode = TextureWrapMode.Clamp;
+                imp.mipmapEnabled = true;
+                imp.filterMode = FilterMode.Trilinear;
+                imp.SaveAndReimport();
+            }
+            return AssetDatabase.LoadAssetAtPath<Texture2D>(path);
+        }
+    }
+
+    /// <summary>
+    /// Proxy component that routes trigger enter/exit from stall volume to the RangeTerminal.
+    /// </summary>
+    public class RangeTerminalTriggerProxy : MonoBehaviour
+    {
+        public RangeTerminal terminal;
+
+        void Start()
+        {
+            var col = GetComponent<BoxCollider>();
+            if (col != null && terminal != null)
+            {
+                // Check if player spawned inside the trigger volume at startup
+                var hits = Physics.OverlapBox(transform.position + col.center, col.size * 0.5f, transform.rotation);
+                for (int i = 0; i < hits.Length; i++)
+                {
+                    if (hits[i].CompareTag("Player") || hits[i].GetComponent<CharacterController>() != null || hits[i].GetComponent<ZeroProtocol.Player.YoruController>() != null)
+                    {
+                        terminal.SetPlayerInside(true);
+                        break;
+                    }
+                }
+            }
+        }
+
+        void OnTriggerEnter(Collider other)
+        {
+            if (terminal != null && (other.CompareTag("Player") || other.GetComponent<ZeroProtocol.Player.YoruController>() != null || other.GetComponent<CharacterController>() != null))
+            {
+                terminal.SetPlayerInside(true);
+            }
+        }
+
+        void OnTriggerExit(Collider other)
+        {
+            if (terminal != null && (other.CompareTag("Player") || other.GetComponent<ZeroProtocol.Player.YoruController>() != null || other.GetComponent<CharacterController>() != null))
+            {
+                terminal.SetPlayerInside(false);
+            }
         }
     }
 }

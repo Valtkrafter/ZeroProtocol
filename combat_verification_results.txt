@@ -20,12 +20,24 @@
 [PASS] Animation Guardrail in MovingRailTarget.cs (No Animator)
 [PASS] Animation Guardrail in MovingRailTarget.cs (No Humanoid Bones)
 [PASS] Animation Guardrail in MovingRailTarget.cs (No IK)
+[PASS] Animation Guardrail in PaperTarget.cs (No Animator)
+[PASS] Animation Guardrail in PaperTarget.cs (No Humanoid Bones)
+[PASS] Animation Guardrail in PaperTarget.cs (No IK)
 [PASS] Animation Guardrail in PopperTarget.cs (No Animator)
 [PASS] Animation Guardrail in PopperTarget.cs (No Humanoid Bones)
 [PASS] Animation Guardrail in PopperTarget.cs (No IK)
+[PASS] Animation Guardrail in RangeTerminal.cs (No Animator)
+[PASS] Animation Guardrail in RangeTerminal.cs (No Humanoid Bones)
+[PASS] Animation Guardrail in RangeTerminal.cs (No IK)
+[PASS] Animation Guardrail in ShellCasingPool.cs (No Animator)
+[PASS] Animation Guardrail in ShellCasingPool.cs (No Humanoid Bones)
+[PASS] Animation Guardrail in ShellCasingPool.cs (No IK)
 [PASS] Animation Guardrail in ShootingTarget.cs (No Animator)
 [PASS] Animation Guardrail in ShootingTarget.cs (No Humanoid Bones)
 [PASS] Animation Guardrail in ShootingTarget.cs (No IK)
+[PASS] Animation Guardrail in TargetTrolley.cs (No Animator)
+[PASS] Animation Guardrail in TargetTrolley.cs (No Humanoid Bones)
+[PASS] Animation Guardrail in TargetTrolley.cs (No IK)
 [PASS] DualPistolCombat Decoupling (No CombatUI)
 [PASS] DualPistolCombat Decoupling (No GunVFX)
 [PASS] Event Lifecycle Audit in GunVFX.cs
@@ -43,10 +55,18 @@
 [PASS] Non-allocating physics in IDamageable.cs
 [PASS] Non-allocating physics in MovingRailTarget.cs
 [PASS] Non-allocating physics in MovingRailTarget.cs
+[PASS] Non-allocating physics in PaperTarget.cs
+[PASS] Non-allocating physics in PaperTarget.cs
 [PASS] Non-allocating physics in PopperTarget.cs
 [PASS] Non-allocating physics in PopperTarget.cs
+[PASS] Non-allocating physics in RangeTerminal.cs
+[PASS] Non-allocating physics in RangeTerminal.cs
+[PASS] Non-allocating physics in ShellCasingPool.cs
+[PASS] Non-allocating physics in ShellCasingPool.cs
 [PASS] Non-allocating physics in ShootingTarget.cs
 [PASS] Non-allocating physics in ShootingTarget.cs
+[PASS] Non-allocating physics in TargetTrolley.cs
+[PASS] Non-allocating physics in TargetTrolley.cs
 [PASS] Muzzle Socket Left Auto-creation
 [PASS] Muzzle Socket Right Auto-creation
 [PASS] Muzzle_L Name Match
@@ -106,6 +126,66 @@
 [PASS] Resupply Restored Left Mag to 15
 [PASS] Resupply Restored Right Mag to 15
 [PASS] Resupply Cleared Reload State
+[PASS] Trolley Initial Distance Equals 10m
+[PASS] Trolley Recall Z Equals -0.2m (0.8m stop)
+[PASS] Trolley 5m Stop Z Equals 4.0m
+[PASS] Trolley 10m Stop Z Equals 9.0m
+[PASS] Trolley 15m Stop Z Equals 14.0m
+[PASS] Trolley 25m Stop Z Equals 24.0m
+[PASS] Trolley In Transit After MoveToDistance(15m)
+[PASS] Trolley Target Distance Set to 15m
+[PASS] Trolley Target Z Set to 14.0m
+[PASS] Trolley Critically Damped Travel Completed
+[PASS] Trolley Arrived at 15m Stop
+[PASS] Trolley Recall Target Distance Equals 0.8m
+[PASS] Trolley Recall Target Z Equals -0.2m
+[PASS] Paper Target Bullseye Center Hit Scores 10 Pts
+[PASS] Paper Target Inner Bullseye Radius (<=0.05m) Scores 10 Pts
+[PASS] Paper Target 9-Ring Radius (<=0.10m) Scores 9 Pts
+[PASS] Paper Target 8-Ring Radius (<=0.16m) Scores 8 Pts
+[PASS] Paper Target 7-Ring Radius (<=0.22m) Scores 7 Pts
+[PASS] Paper Target Silhouette Torso Zone Scores 5 Pts
+[PASS] Paper Target Out of Bounds Miss Scores 0 Pts
+[PASS] Initial Paper Target Shot Count is 0
+[PASS] Initial Paper Target Total Score is 0
+[PASS] Initial Extreme Spread is 0.0 cm
+[PASS] Shot 1 Count Incremented to 1
+[PASS] Shot 1 Score Equals 10
+[PASS] Single Shot Grouping Extreme Spread Equals 0.0 cm
+[PASS] Shot 2 Count Incremented to 2
+[PASS] Cumulative Score Equals 19 (10 + 9)
+[PASS] Extreme Spread Computed to 4.0 cm
+[PASS] Shot 3 Count Incremented to 3
+[PASS] Cumulative Score Equals 29 (10 + 9 + 10)
+[PASS] Extreme Spread Computed to 8.0 cm
+[PASS] Scaled Target 4cm Hit Accurately Scores 10 Pts (Isotropic)
+[PASS] Scaled Target Extreme Spread Correctly Equals 8.0 cm
+[PASS] RecordedShotCount Correctly Tracks 2 Shots
+[PASS] GetHitCoordinate Returns True Metric Hit X (0.04m)
+[PASS] FreshPaper Cleared Shot Count
+[PASS] FreshPaper Cleared Total Score
+[PASS] FreshPaper Reset Extreme Spread to 0.0 cm
+[PASS] Terminal Initially in Standby (Player Outside)
+[PASS] Terminal Activated When Player Steps Into Stall
+[PASS] Terminal Dispatched SendTo25M
+[PASS] Terminal Dispatched RecallTarget (0.8m)
+[PASS] Popper Target Knocked Down by Lethal Hit
+[PASS] Popper Target Instantly Reset & Raised by Booth Terminal
+[PASS] Popper Target Health Restored to 100 by Terminal Reset
+[PASS] Terminal Renders Target Schematic
+[PASS] Terminal Computes MOA Telemetry
+[PASS] Stall Trigger Rigidbody Is Kinematic
+[PASS] Proxy OnTriggerEnter Activated Terminal for CharacterController
+[PASS] Proxy OnTriggerExit Deactivated Terminal for CharacterController
+[PASS] Shell Casing Pool Prewarmed All Instances
+[PASS] Initial Active Shell Casing Count is 0
+[PASS] Shell Casings Have Assigned Physics Material
+[PASS] Shell Casings Have Realistic Brass Bounciness
+[PASS] Active Shell Count Incremented on Left Ejection
+[PASS] Available Shell Count Decremented
+[PASS] Active Shell Count Incremented on Right Ejection
+[PASS] RecycleAll Restored Active Count to 0
+[PASS] RecycleAll Restored All Casings to Available Pool
 ======================================================
-[CombatSystemVerifier] ALL TESTS PASSED! (105/105)
+[CombatSystemVerifier] ALL TESTS PASSED! (185/185)
 ======================================================
