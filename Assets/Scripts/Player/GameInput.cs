@@ -33,13 +33,27 @@ namespace ZeroProtocol.Player
         /// <summary>Held: Ctrl. Reserved, it does nothing yet: Ctrl will get its own animation later (W already plays the walk).</summary>
         public bool CtrlHeld { get; private set; }
 
+        [Header("Combat Actions")]
+        public bool FirePressed { get; private set; }
+        public bool FireHeld { get; private set; }
+        public bool AimPressed { get; private set; }
+        public bool AimHeld { get; private set; }
+        public bool ReloadPressed { get; private set; }
+
+        public event System.Action OnFirePressed;
+        public event System.Action OnFireReleased;
+        public event System.Action OnAimPressed;
+        public event System.Action OnAimReleased;
+        public event System.Action OnReloadPressed;
+
         /// <summary>Test hooks: when set, they replace the real devices (used by automated checks).</summary>
         public Vector2? MoveOverride;
         public bool JumpOverride, DashOverride, LockOnOverride;
-        /// <summary>Stay on until they are set back (a held Ctrl key, a held Shift key).</summary>
-        public bool CtrlOverride, SprintOverride;
+        public bool FireOverride, AimOverride, ReloadOverride;
+        /// <summary>Stay on until they are set back (a held Ctrl key, a held Shift key, held Fire/Aim).</summary>
+        public bool CtrlOverride, SprintOverride, FireHeldOverride, AimHeldOverride;
 
-        InputAction move, look, zoom, jump, dash, lockOn, ctrl;
+        InputAction move, look, zoom, jump, dash, lockOn, ctrl, fire, aim, reload;
 
         void Awake()
         {
@@ -71,16 +85,30 @@ namespace ZeroProtocol.Player
             ctrl = new InputAction("Ctrl", InputActionType.Button);
             ctrl.AddBinding("<Keyboard>/leftCtrl");
             ctrl.AddBinding("<Keyboard>/rightCtrl");
+
+            fire = new InputAction("Fire", InputActionType.Button);
+            fire.AddBinding("<Mouse>/leftButton");
+            fire.AddBinding("<Gamepad>/rightTrigger");
+
+            aim = new InputAction("Aim", InputActionType.Button);
+            aim.AddBinding("<Mouse>/rightButton");
+            aim.AddBinding("<Gamepad>/leftTrigger");
+
+            reload = new InputAction("Reload", InputActionType.Button);
+            reload.AddBinding("<Keyboard>/r");
+            reload.AddBinding("<Gamepad>/buttonWest");
         }
 
         void OnEnable()
         {
             move.Enable(); look.Enable(); zoom.Enable(); jump.Enable(); dash.Enable(); lockOn.Enable(); ctrl.Enable();
+            fire.Enable(); aim.Enable(); reload.Enable();
         }
 
         void OnDisable()
         {
             move.Disable(); look.Disable(); zoom.Disable(); jump.Disable(); dash.Disable(); lockOn.Disable(); ctrl.Disable();
+            fire.Disable(); aim.Disable(); reload.Disable();
         }
 
         void Update()
@@ -89,26 +117,46 @@ namespace ZeroProtocol.Player
             {
                 Move = Vector2.zero; Look = Vector2.zero; Zoom = 0f;
                 JumpPressed = DashPressed = LockOnPressed = CtrlHeld = SprintHeld = false;
+                FirePressed = FireHeld = AimPressed = AimHeld = ReloadPressed = false;
                 return;
             }
 
-            Move = Vector2.ClampMagnitude(MoveOverride ?? move.ReadValue<Vector2>(), 1f);
-            CtrlHeld = ctrl.IsPressed() || CtrlOverride;
-            JumpPressed = jump.WasPressedThisFrame() || JumpOverride;
-            DashPressed = dash.WasPressedThisFrame() || DashOverride;
-            SprintHeld = dash.IsPressed() || SprintOverride;
-            LockOnPressed = lockOn.WasPressedThisFrame() || LockOnOverride;
+            Move = Vector2.ClampMagnitude(MoveOverride ?? (move != null ? move.ReadValue<Vector2>() : Vector2.zero), 1f);
+            CtrlHeld = (ctrl != null && ctrl.IsPressed()) || CtrlOverride;
+            JumpPressed = (jump != null && jump.WasPressedThisFrame()) || JumpOverride;
+            DashPressed = (dash != null && dash.WasPressedThisFrame()) || DashOverride;
+            SprintHeld = (dash != null && dash.IsPressed()) || SprintOverride;
+            LockOnPressed = (lockOn != null && lockOn.WasPressedThisFrame()) || LockOnOverride;
             JumpOverride = DashOverride = LockOnOverride = false;
 
+            // Combat input with cursor lock gating
+            bool cursorLocked = Cursor.lockState == CursorLockMode.Locked;
+            bool mouseControl = Mouse.current != null;
+            bool combatAllowed = cursorLocked || !mouseControl;
+
+            FirePressed = (combatAllowed && (fire != null && fire.WasPressedThisFrame())) || FireOverride;
+            FireHeld = (combatAllowed && (fire != null && fire.IsPressed())) || FireHeldOverride;
+            AimPressed = (combatAllowed && (aim != null && aim.WasPressedThisFrame())) || AimOverride;
+            AimHeld = (combatAllowed && (aim != null && aim.IsPressed())) || AimHeldOverride;
+            ReloadPressed = (reload != null && reload.WasPressedThisFrame()) || ReloadOverride;
+
+            if (FirePressed) OnFirePressed?.Invoke();
+            if (fire != null && fire.WasReleasedThisFrame()) OnFireReleased?.Invoke();
+            if (AimPressed) OnAimPressed?.Invoke();
+            if (aim != null && aim.WasReleasedThisFrame()) OnAimReleased?.Invoke();
+            if (ReloadPressed) OnReloadPressed?.Invoke();
+
+            FireOverride = AimOverride = ReloadOverride = false;
+
             // Mouse delta only counts while the cursor is captured; the stick is time based.
-            Vector2 raw = look.ReadValue<Vector2>();
+            Vector2 raw = look != null ? look.ReadValue<Vector2>() : Vector2.zero;
             bool usingMouse = Mouse.current != null && Mouse.current.delta.ReadValue().sqrMagnitude > 0f;
             if (usingMouse)
                 Look = Cursor.lockState == CursorLockMode.Locked ? raw * mouseDegreesPerPixel : Vector2.zero;
             else
                 Look = raw * stickDegreesPerSecond * Time.deltaTime;
 
-            Zoom = -zoom.ReadValue<float>() * 0.01f;
+            Zoom = zoom != null ? -zoom.ReadValue<float>() * 0.01f : 0f;
         }
     }
 }

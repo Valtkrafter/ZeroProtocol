@@ -61,6 +61,7 @@ namespace ZeroProtocol.Player
         [Header("References")]
         public Transform cameraTransform;
         public Animator animator;
+        public CameraSystem.LockOnSystem lockOn;
 
         public bool IsGrounded { get; private set; }
         public bool IsDashing { get { return dashTimer > 0f; } }
@@ -98,39 +99,63 @@ namespace ZeroProtocol.Player
 
         void Awake()
         {
-            cc = GetComponent<CharacterController>();
-            input = GetComponent<GameInput>();
+            EnsureComponents();
+        }
+
+        public void EnsureComponents()
+        {
+            if (cc == null) cc = GetComponent<CharacterController>();
+            if (input == null) input = GetComponent<GameInput>();
             if (animator == null) animator = GetComponentInChildren<Animator>();
             if (cameraTransform == null && Camera.main != null) cameraTransform = Camera.main.transform;
+            if (lockOn == null) lockOn = GetComponent<CameraSystem.LockOnSystem>();
             if (animator != null)
             {
                 animator.applyRootMotion = false;
-                if (animator.runtimeAnimatorController != null)
+                if (animator.runtimeAnimatorController != null && animParams.Count == 0)
                     foreach (var p in animator.parameters) animParams.Add(p.nameHash);
             }
         }
 
         void Update()
         {
+            EnsureComponents();
             float dt = Time.deltaTime;
-            if (dt <= 0f) return;
+            if (dt <= 0f)
+            {
+                if (Application.isPlaying) return;
+                dt = 0.02f;
+            }
 
-            Vector3 wish = CameraRelative(input.Move);
-            IsGrounded = cc.isGrounded;
+            Vector3 wish = CameraRelative(input != null ? input.Move : Vector2.zero);
+            IsGrounded = cc != null && cc.isGrounded;
+#if UNITY_EDITOR
+            if (!Application.isPlaying) IsGrounded = true;
+#endif
 
             // timers
             coyoteTimer = IsGrounded ? coyoteTime : coyoteTimer - dt;
-            jumpBufferTimer = input.JumpPressed ? jumpBuffer : jumpBufferTimer - dt;
+            jumpBufferTimer = (input != null && input.JumpPressed) ? jumpBuffer : jumpBufferTimer - dt;
             dashCooldownTimer -= dt;
             if (dashTimer > 0f) dashTimer -= dt;
-            shiftHeldTime = input.SprintHeld ? shiftHeldTime + dt : 0f;      // a press is the dodge, holding it on is the sprint
+            shiftHeldTime = (input != null && input.SprintHeld) ? shiftHeldTime + dt : 0f;      // a press is the dodge, holding it on is the sprint
             if (IsGrounded) { airTime = 0f; if (verticalVelocity <= 0f) jumpedThisAir = false; }
             else airTime += dt;
 
-            // dash
-            if (input.DashPressed && dashCooldownTimer <= 0f && !IsDashing && IsGrounded)
+            Vector3 toLockTarget = Vector3.zero;
+            bool isLockedOn = false;
+            if (lockOn != null && lockOn.Current != null)
             {
-                dashDirection = wish.sqrMagnitude > 0.01f ? wish.normalized : transform.forward;
+                toLockTarget = lockOn.Current.AimPoint - transform.position;
+                toLockTarget.y = 0f;
+                if (toLockTarget.sqrMagnitude > 0.01f) isLockedOn = true;
+            }
+            Vector3 lockForward = isLockedOn ? toLockTarget.normalized : transform.forward;
+
+            // dash
+            if (input != null && input.DashPressed && dashCooldownTimer <= 0f && !IsDashing && IsGrounded)
+            {
+                dashDirection = wish.sqrMagnitude > 0.01f ? wish.normalized : (isLockedOn ? lockForward : transform.forward);
                 dashTimer = dashDuration;
                 dashCooldownTimer = dashCooldown;
             }
@@ -142,7 +167,14 @@ namespace ZeroProtocol.Player
                 float t = 1f - dashTimer / dashDuration;                 // 0 -> 1
                 float ease = Mathf.Lerp(1f, 0.35f, t * t);               // fast start, soft end
                 horizontalVelocity = dashDirection * (dashSpeed * ease);
-                RotateTowards(dashDirection, dt);
+                if (isLockedOn)
+                {
+                    RotateTowards(lockForward, dt);
+                }
+                else
+                {
+                    RotateTowards(dashDirection, dt);
+                }
             }
             else
             {
@@ -153,7 +185,14 @@ namespace ZeroProtocol.Player
                 Vector3 target = tilt > 0.0001f ? wish / tilt * wanted : Vector3.zero;
                 float rate = (wish.sqrMagnitude > 0.01f ? acceleration : deceleration) * (IsGrounded ? 1f : airControl);
                 horizontalVelocity = Vector3.MoveTowards(horizontalVelocity, target, rate * dt);
-                if (wish.sqrMagnitude > 0.01f) RotateTowards(wish, dt);
+                if (isLockedOn)
+                {
+                    RotateTowards(lockForward, dt);
+                }
+                else if (wish.sqrMagnitude > 0.01f)
+                {
+                    RotateTowards(wish, dt);
+                }
             }
 
             // vertical velocity
@@ -173,7 +212,7 @@ namespace ZeroProtocol.Player
 
             // the walk speed is not constant within a step (the planted feet of the clip were made for this wobble)
             GaitSpeedFactor = IsGrounded && !IsDashing ? GaitFactor() : 1f;
-            cc.Move((horizontalVelocity * GaitSpeedFactor + Vector3.up * vyMove) * dt);
+            if (cc != null) cc.Move((horizontalVelocity * GaitSpeedFactor + Vector3.up * vyMove) * dt);
 
             UpdateAnimator();
         }

@@ -35,8 +35,8 @@ namespace ZeroProtocol.Player
 
         void OnGUI()
         {
-            GUI.Label(new Rect(12, 8, 1400, 26),
-                "WASD walk   Shift tap dodge   Shift hold sprint   Mouse camera   Space jump   Wheel click lock-on   Wheel zoom   Esc free cursor + settings (motion blur slider)");
+            GUI.Label(new Rect(12, 8, 1500, 26),
+                "LMB Fire (Dual Cadence)   RMB Aim (ADS)   R Reload   WASD walk   Shift tap dodge / hold sprint   Mouse camera   Space jump   Wheel click lock-on   Esc cursor");
             if (versionStyle == null)
             {
                 versionStyle = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.LowerRight, fontSize = 11 };

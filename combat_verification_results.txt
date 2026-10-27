@@ -1,0 +1,111 @@
+======================================================
+[CombatSystemVerifier] STARTING FULL COMBAT SYSTEM VERIFICATION
+======================================================
+[PASS] Combat Script Delivery Count
+[PASS] Animation Guardrail in AmmoCrate.cs (No Animator)
+[PASS] Animation Guardrail in AmmoCrate.cs (No Humanoid Bones)
+[PASS] Animation Guardrail in AmmoCrate.cs (No IK)
+[PASS] Animation Guardrail in CombatUI.cs (No Animator)
+[PASS] Animation Guardrail in CombatUI.cs (No Humanoid Bones)
+[PASS] Animation Guardrail in CombatUI.cs (No IK)
+[PASS] Animation Guardrail in DualPistolCombat.cs (No Animator)
+[PASS] Animation Guardrail in DualPistolCombat.cs (No Humanoid Bones)
+[PASS] Animation Guardrail in DualPistolCombat.cs (No IK)
+[PASS] Animation Guardrail in GunVFX.cs (No Animator)
+[PASS] Animation Guardrail in GunVFX.cs (No Humanoid Bones)
+[PASS] Animation Guardrail in GunVFX.cs (No IK)
+[PASS] Animation Guardrail in IDamageable.cs (No Animator)
+[PASS] Animation Guardrail in IDamageable.cs (No Humanoid Bones)
+[PASS] Animation Guardrail in IDamageable.cs (No IK)
+[PASS] Animation Guardrail in MovingRailTarget.cs (No Animator)
+[PASS] Animation Guardrail in MovingRailTarget.cs (No Humanoid Bones)
+[PASS] Animation Guardrail in MovingRailTarget.cs (No IK)
+[PASS] Animation Guardrail in PopperTarget.cs (No Animator)
+[PASS] Animation Guardrail in PopperTarget.cs (No Humanoid Bones)
+[PASS] Animation Guardrail in PopperTarget.cs (No IK)
+[PASS] Animation Guardrail in ShootingTarget.cs (No Animator)
+[PASS] Animation Guardrail in ShootingTarget.cs (No Humanoid Bones)
+[PASS] Animation Guardrail in ShootingTarget.cs (No IK)
+[PASS] DualPistolCombat Decoupling (No CombatUI)
+[PASS] DualPistolCombat Decoupling (No GunVFX)
+[PASS] Event Lifecycle Audit in GunVFX.cs
+[PASS] Event Lifecycle Audit in CombatUI.cs
+[PASS] Event Lifecycle Audit in ThirdPersonCamera.cs
+[PASS] Non-allocating physics in AmmoCrate.cs
+[PASS] Non-allocating physics in AmmoCrate.cs
+[PASS] Non-allocating physics in CombatUI.cs
+[PASS] Non-allocating physics in CombatUI.cs
+[PASS] Non-allocating physics in DualPistolCombat.cs
+[PASS] Non-allocating physics in DualPistolCombat.cs
+[PASS] Non-allocating physics in GunVFX.cs
+[PASS] Non-allocating physics in GunVFX.cs
+[PASS] Non-allocating physics in IDamageable.cs
+[PASS] Non-allocating physics in IDamageable.cs
+[PASS] Non-allocating physics in MovingRailTarget.cs
+[PASS] Non-allocating physics in MovingRailTarget.cs
+[PASS] Non-allocating physics in PopperTarget.cs
+[PASS] Non-allocating physics in PopperTarget.cs
+[PASS] Non-allocating physics in ShootingTarget.cs
+[PASS] Non-allocating physics in ShootingTarget.cs
+[PASS] Muzzle Socket Left Auto-creation
+[PASS] Muzzle Socket Right Auto-creation
+[PASS] Muzzle_L Name Match
+[PASS] Muzzle_R Name Match
+[PASS] Initial Left Ammo 15
+[PASS] Initial Right Ammo 15
+[PASS] Shot 1 Fired Event Dispatched
+[PASS] Shot 1 Hand Alternation (Left First)
+[PASS] Left Pistol Ammo Decremented to 14
+[PASS] Right Pistol Ammo Untouched at 15
+[PASS] Shot 2 Fired Event Dispatched
+[PASS] Shot 2 Hand Alternation (Right Second)
+[PASS] Left Pistol Ammo Remains 14
+[PASS] Right Pistol Ammo Decremented to 14
+[PASS] Bloom >= thetaMin
+[PASS] DualPistolCombat ADS Aiming State Active
+[PASS] Bloom Reduced in ADS Mode
+[PASS] Target Initially Alive
+[PASS] Target Initial Health 100
+[PASS] Headshot Damage Applied (-75 -> 25)
+[PASS] Target Marked Dead After Lethal Damage
+[PASS] Target Health Clamped to 0
+[PASS] Tier 1 Friction at alpha=0 equals frictionMin (0.65)
+[PASS] Tier 1 Friction outside cone equals 1.0 (Full sensitivity)
+[PASS] Tier 2 Magnetism Hipfire Head Cone Angle <= 1.2 deg
+[PASS] Tier 2 Magnetism Hipfire Body Cone Angle <= 2.5 deg
+[PASS] Tier 2 Magnetism Hipfire Trajectory Bending Weight = 0.40
+[PASS] Tier 2 Magnetism ADS Head Cone Angle <= 2.0 deg
+[PASS] Tier 2 Magnetism ADS Body Cone Angle <= 3.8 deg
+[PASS] Tier 2 Magnetism ADS Trajectory Bending Weight = 0.55
+[PASS] MovingRailTarget 10m Offset
+[PASS] Hit Feedback Not Dispatched On Static Wall/Floor Hits
+[PASS] Hit Feedback Dispatched On Alive Target Hit
+[PASS] Hit Feedback Contains Positive Damage
+[PASS] Target Confirmed Dead
+[PASS] Hit Feedback Not Dispatched On Dead Target Hits
+[PASS] Point-blank Aim Point Detected Behind Muzzle Plane
+[PASS] Bullet Magnetism Ignores Occluded Target Behind Wall
+[PASS] Camera Recoil Still Active After Disable/Enable Cycle
+[PASS] Knock Target Lethally Damaged
+[PASS] Dead Target Knocks Away (Positive Tilt) in Bullet Impact Direction
+[PASS] PopperTarget Initially Alive
+[PASS] PopperTarget Drop Angle is 90 degrees
+[PASS] PopperTarget Respawn Delay is 2.5s
+[PASS] PopperTarget Marked Dead After Lethal Hit
+[PASS] PopperTarget Hinged Down Flat (> 80 deg) when Dead
+[PASS] PopperTarget Elastic Pop-up Respawned After 2.5s
+[PASS] PopperTarget Restored to Full Health
+[PASS] LockOnSystem Initially Acquires Target 1 (Closest to Center)
+[PASS] LockOnSystem Automatically Switched to Target 2 on Target 1 Kill
+[PASS] LockOnSystem Cleanly Released Lock When No Alive Targets Remain
+[PASS] Yoru Controller Faces Target in Strafe Locomotion
+[PASS] Yoru Controller Successfully Initiated Combat Dash
+[PASS] Directional Combat Dodge Vector Directed to Pressed Input (Left)
+[PASS] Yoru Controller Continues Facing Target During Directional Dodge
+[PASS] Ammo Depleted for Resupply Test
+[PASS] Resupply Restored Left Mag to 15
+[PASS] Resupply Restored Right Mag to 15
+[PASS] Resupply Cleared Reload State
+======================================================
+[CombatSystemVerifier] ALL TESTS PASSED! (105/105)
+======================================================

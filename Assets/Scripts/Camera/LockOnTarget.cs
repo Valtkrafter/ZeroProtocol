@@ -4,6 +4,7 @@ using UnityEngine;
 namespace ZeroProtocol.CameraSystem
 {
     /// <summary>Marks anything the player can lock on to (enemies, training dummies, bosses).</summary>
+    [ExecuteAlways]
     public class LockOnTarget : MonoBehaviour
     {
         public static readonly List<LockOnTarget> All = new List<LockOnTarget>();
@@ -13,7 +14,22 @@ namespace ZeroProtocol.CameraSystem
 
         public Vector3 AimPoint { get { return transform.position + Vector3.up * aimHeight; } }
 
-        void OnEnable() { All.Add(this); }
-        void OnDisable() { All.Remove(this); }
+        void OnEnable()
+        {
+            if (!All.Contains(this))
+            {
+                All.Add(this);
+            }
+        }
+
+        void OnDisable()
+        {
+            All.Remove(this);
+        }
+
+        void OnDestroy()
+        {
+            All.Remove(this);
+        }
     }
 }
