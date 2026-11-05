@@ -4,8 +4,9 @@ using ZeroProtocol.Player;
 namespace ZeroProtocol.CameraSystem
 {
     /// <summary>
-    /// Orbit camera behind the player (free look with the mouse). When a lock target is set the camera
-    /// swings behind the player so the target stays in view, like the lock-on of Wuthering Waves.
+    /// Over-the-shoulder orbit camera behind the player. The mouse turns it and the crosshair in its centre is where the bullets go.
+    /// Lock-on does not steer it: the lock only turns her body (YoruController), the camera and the crosshair stay free.
+    /// Alt (hold) is free look: the camera orbits while her body and the move keys keep the heading from before, and it swings back on release.
     /// Walls pull the camera in so it never sits inside geometry.
     /// </summary>
     [DefaultExecutionOrder(100)]
@@ -55,14 +56,19 @@ namespace ZeroProtocol.CameraSystem
         public float collisionRadius = 0.25f;
         public float collisionPadding = 0.1f;
 
-        [Header("Lock-on")]
-        public Transform lockTarget;
-        public float lockTurnSpeed = 7f;
-        public float lockPitch = 14f;
+        [Header("Free look (hold Alt)")]
+        [Tooltip("How fast the camera swings back to where it was when Alt is let go (higher = faster).")]
+        public float freeLookRecenterSpeed = 7f;
 
         public float Yaw { get { return yaw; } }
+        /// <summary>True while Alt is held and while the camera swings back afterwards: the camera orbits freely, but her body and the move keys keep the heading they had when Alt went down.</summary>
+        public bool FreeLookActive { get { return freeLook || recentering; } }
+        /// <summary>The crosshair heading her body faces (and the move keys are relative to) when she is not locked on, running or dodging: the camera yaw, or the frozen one while FreeLookActive.</summary>
+        public float AimYaw { get { return FreeLookActive ? aimYaw : yaw; } }
 
         float yaw, pitch = 15f;
+        float aimYaw;
+        bool freeLook, recentering;
         float baseFov, speedFeel;
         float aimBlend, aimVelocity;
         Vector2 recoilOffset, recoilVelocity;
@@ -109,6 +115,7 @@ namespace ZeroProtocol.CameraSystem
 
         void OnDisable()
         {
+            freeLook = recentering = false;
             if (combat != null) combat.OnWeaponFired -= HandleWeaponFired;
         }
 
@@ -121,6 +128,35 @@ namespace ZeroProtocol.CameraSystem
         {
             recoilVelocity.x += kickAngles.x * recoilOmega;
             recoilVelocity.y += kickAngles.y * recoilOmega;
+        }
+
+        /// <summary>Sets the orbit directly (degrees): a respawn, the end of a cutscene, the verifier. Free look is not touched.</summary>
+        public void SetOrbit(float yawDegrees, float pitchDegrees)
+        {
+            yaw = yawDegrees;
+            pitch = Mathf.Clamp(pitchDegrees, minPitch, maxPitch);
+        }
+
+        /// <summary>
+        /// The Alt state machine. Holding Alt starts free look and freezes AimYaw at the camera yaw of that moment; letting go swings the camera back to it;
+        /// a mouse move during the swing takes the camera back at once. LateUpdate calls it every frame; public so the verifier can run it without a frame loop.
+        /// </summary>
+        public void UpdateFreeLook(float dt)
+        {
+            bool freeHeld = input != null && input.FreeLookHeld;
+            if (freeHeld && !freeLook)
+            {
+                if (!recentering) aimYaw = yaw;   // pressed again during the swing back: keep the heading from before
+                recentering = false;
+            }
+            else if (!freeHeld && freeLook) recentering = true;
+            freeLook = freeHeld;
+            if (recentering)
+            {
+                yaw = Mathf.LerpAngle(yaw, aimYaw, 1f - Mathf.Exp(-freeLookRecenterSpeed * dt));
+                bool grabbed = input != null && input.Look.sqrMagnitude > 0.0001f;   // turning the mouse takes the camera back
+                if (grabbed || Mathf.Abs(Mathf.DeltaAngle(yaw, aimYaw)) < 1f) recentering = false;
+            }
         }
 
         void HandleWeaponFired(ZeroProtocol.Combat.FireEventData fireData)
@@ -231,22 +267,15 @@ namespace ZeroProtocol.CameraSystem
                 frictionFactor = Mathf.Lerp(frictionMin, 1.0f, sStep);
             }
 
-            if (lockTarget != null)
-            {
-                Vector3 toTarget = lockTarget.position - target.position;
-                toTarget.y = 0f;
-                if (toTarget.sqrMagnitude > 0.01f)
-                {
-                    float goalYaw = Mathf.Atan2(toTarget.x, toTarget.z) * Mathf.Rad2Deg;
-                    float k = 1f - Mathf.Exp(-lockTurnSpeed * dt);
-                    yaw = Mathf.LerpAngle(yaw, goalYaw, k);
-                    pitch = Mathf.Lerp(pitch, lockPitch, k);
-                }
-            }
-            else
+            // Free look (Alt): the camera orbits on its own while her body and the move keys keep the heading they had when Alt went down.
+            // When Alt is let go the camera swings back to where it was, so the walking direction never jumps.
+            // Lock-on does not touch the camera: the player aims the crosshair freely, only her body turns to the target.
+            UpdateFreeLook(dt);
+
+            if (!recentering)
             {
                 // Subtle magnetic nudge when near target center (microscopic gentle pull <= 1.5 deg/s)
-                if (bestAlpha <= nudgeConeAngle && bestTargetCenter != Vector3.zero)
+                if (!freeLook && bestAlpha <= nudgeConeAngle && bestTargetCenter != Vector3.zero)
                 {
                     Vector3 toBest = (bestTargetCenter - camOrigin).normalized;
                     float targetYaw = Mathf.Atan2(toBest.x, toBest.z) * Mathf.Rad2Deg;

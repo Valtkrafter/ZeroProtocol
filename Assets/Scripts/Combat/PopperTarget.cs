@@ -99,8 +99,9 @@ namespace ZeroProtocol.Combat
             IsAlive = true;
             CurrentHealth = maxHealth;
             deathTimer = 0f;
-            currentTilt = 0f;
-            tiltVelocity = springUpImpulse; // Elastic spring pop-up
+            // Lift from the flat position with the hinge spring instead of snapping upright: a small kick,
+            // then the underdamped spring carries the plate up with a slight overshoot back toward the shooter
+            tiltVelocity = -springUpImpulse;
             tiltAxis = Vector3.right;
             flashTimer = 0.35f;
             currentFlashColor = ColorHeadshot;

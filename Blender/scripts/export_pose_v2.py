@@ -22,6 +22,8 @@ scene = bpy.context.scene
 arm = next(o for o in bpy.data.objects if o.type == 'ARMATURE')
 if ACTION:
     arm.animation_data.action = bpy.data.actions[ACTION]
+    if getattr(arm.animation_data, 'action_slot', None) is None and len(arm.animation_data.action.slots):   # Blender 5: a slotted action needs its slot
+        arm.animation_data.action_slot = arm.animation_data.action.slots[0]
 act = arm.animation_data.action
 f0, f1 = int(round(act.frame_range[0])), int(round(act.frame_range[1]))
 fps = scene.render.fps

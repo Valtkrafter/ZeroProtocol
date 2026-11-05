@@ -36,7 +36,9 @@ namespace ZeroProtocol.Player
         void OnGUI()
         {
             GUI.Label(new Rect(12, 8, 1500, 26),
-                "LMB Fire (Dual Cadence)   RMB Aim (ADS)   R Reload   WASD walk   Shift tap dodge / hold sprint   Mouse camera   Space jump   Wheel click lock-on   Esc cursor");
+                "LMB Fire (Dual Cadence)   RMB Aim (ADS)   R Reload   Mouse camera + crosshair   Space jump   Alt hold: look around   Esc cursor");
+            GUI.Label(new Rect(12, 26, 1500, 26),
+                "WASD move (she faces the crosshair, S backs up)   Shift tap dodge / hold sprint (faces the way she runs)   Wheel click lock-on (she faces the target, WASD relative to it)");
             if (versionStyle == null)
             {
                 versionStyle = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.LowerRight, fontSize = 11 };

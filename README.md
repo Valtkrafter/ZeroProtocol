@@ -76,13 +76,14 @@ Das Projekt befindet sich in der aktiven Alpha-Entwicklung (**v0.0.2**).
 
 | Taste | Aktion |
 |---|---|
-| **W / A / S / D** | Gehen / Laufen |
-| **Shift (halten)** | Sprint (5,0 m/s mit dynamischer Kamera) |
-| **Shift (tippen)** | Ausweichen (Dodge / Dash) |
+| **W / A / S / D** | Bewegen relativ zur Kamera: W vorwärts, S rückwärts (Yoru schaut dabei weiter nach vorn), A / D seitwärts. Yoru schaut immer zum Fadenkreuz |
+| **Shift (halten)** | Sprint (5,0 m/s mit dynamischer Kamera): Yoru schaut in Laufrichtung. Stehenbleiben, Zielen oder Schießen beendet den Sprint, dann dreht sie sich zurück zum Fadenkreuz |
+| **Shift (tippen)** | Ausweichen (Dodge / Dash) in Richtung der Tasten |
 | **Leertaste** | Springen |
-| **Maus** | Kamera drehen |
-| **Mausrad (Klick)** | Lock-On auf Ziel aufschalten |
+| **Maus** | Kamera drehen (das Fadenkreuz in der Bildmitte ist die Schussrichtung) |
+| **Mausrad (Klick)** | Lock-On an / aus: nur Yorus Körper dreht sich zum Ziel, Kamera und Fadenkreuz bleiben frei. W / A / S / D gelten dann relativ zum Ziel (W hin, S weg, A / D kreisen um das Ziel) |
 | **Mausrad (Drehen)** | Kamera-Zoom |
+| **Alt (halten)** | Freie Kamera: um Yoru herumschauen, ohne dass sie sich mitdreht oder die Laufrichtung ändert; beim Loslassen schwenkt die Kamera zurück |
 | **Esc** | Mauszeiger freigeben / Einstellungs-Panel öffnen (Motion Blur) |
 | **F10** | Einstellungs-Panel auf dem Bildschirm fixieren |
 
@@ -92,7 +93,7 @@ Das Projekt befindet sich in der aktiven Alpha-Entwicklung (**v0.0.2**).
 
 * `Assets/Scenes/Arena.unity`: Haupt-Test-Arena für Gameplay, Physik und Rendering.
 * `Assets/Scripts/Player/`: Controller, Movement, Lock-On, Blinzeln und Gesichts-Mimik.
-* `Assets/Scripts/Camera/`: Third-Person-Cinemachine-Steuerung und Lock-On-Kamera.
+* `Assets/Scripts/Camera/`: Third-Person-Schulterkamera (freie Kamera mit Alt) und das Lock-On-System, das nur Yorus Körper zum Ziel dreht.
 * `Assets/Scripts/Settings/`: Post-Processing- und Grafikeinstellungen.
 * `Assets/Editor/`: Editor-Werkzeuge (z. B. `ArenaBuilder.cs`, Animator-Tools).
 * `Blender/`: Blender-Dateien (`.blend`), Generierungsskripte für Bewegungszyklen und Pose-Streams.

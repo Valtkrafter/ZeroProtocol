@@ -32,6 +32,8 @@ namespace ZeroProtocol.Player
         public bool LockOnPressed { get; private set; }
         /// <summary>Held: Ctrl. Reserved, it does nothing yet: Ctrl will get its own animation later (W already plays the walk).</summary>
         public bool CtrlHeld { get; private set; }
+        /// <summary>Held: Alt. Free look: the camera orbits her while her body and the move keys keep the heading from before (see ThirdPersonCamera.FreeLookActive).</summary>
+        public bool FreeLookHeld { get; private set; }
 
         [Header("Combat Actions")]
         public bool FirePressed { get; private set; }
@@ -50,10 +52,10 @@ namespace ZeroProtocol.Player
         public Vector2? MoveOverride;
         public bool JumpOverride, DashOverride, LockOnOverride;
         public bool FireOverride, AimOverride, ReloadOverride;
-        /// <summary>Stay on until they are set back (a held Ctrl key, a held Shift key, held Fire/Aim).</summary>
-        public bool CtrlOverride, SprintOverride, FireHeldOverride, AimHeldOverride;
+        /// <summary>Stay on until they are set back (a held Ctrl key, a held Shift key, held Fire/Aim, a held Alt key).</summary>
+        public bool CtrlOverride, SprintOverride, FireHeldOverride, AimHeldOverride, FreeLookOverride;
 
-        InputAction move, look, zoom, jump, dash, lockOn, ctrl, fire, aim, reload;
+        InputAction move, look, zoom, jump, dash, lockOn, ctrl, fire, aim, reload, freeLook;
 
         void Awake()
         {
@@ -97,18 +99,22 @@ namespace ZeroProtocol.Player
             reload = new InputAction("Reload", InputActionType.Button);
             reload.AddBinding("<Keyboard>/r");
             reload.AddBinding("<Gamepad>/buttonWest");
+
+            freeLook = new InputAction("FreeLook", InputActionType.Button);
+            freeLook.AddBinding("<Keyboard>/leftAlt");
+            freeLook.AddBinding("<Keyboard>/rightAlt");
         }
 
         void OnEnable()
         {
             move.Enable(); look.Enable(); zoom.Enable(); jump.Enable(); dash.Enable(); lockOn.Enable(); ctrl.Enable();
-            fire.Enable(); aim.Enable(); reload.Enable();
+            fire.Enable(); aim.Enable(); reload.Enable(); freeLook.Enable();
         }
 
         void OnDisable()
         {
             move.Disable(); look.Disable(); zoom.Disable(); jump.Disable(); dash.Disable(); lockOn.Disable(); ctrl.Disable();
-            fire.Disable(); aim.Disable(); reload.Disable();
+            fire.Disable(); aim.Disable(); reload.Disable(); freeLook.Disable();
         }
 
         void Update()
@@ -116,7 +122,7 @@ namespace ZeroProtocol.Player
             if (!InputEnabled)
             {
                 Move = Vector2.zero; Look = Vector2.zero; Zoom = 0f;
-                JumpPressed = DashPressed = LockOnPressed = CtrlHeld = SprintHeld = false;
+                JumpPressed = DashPressed = LockOnPressed = CtrlHeld = SprintHeld = FreeLookHeld = false;
                 FirePressed = FireHeld = AimPressed = AimHeld = ReloadPressed = false;
                 return;
             }
@@ -126,6 +132,7 @@ namespace ZeroProtocol.Player
             JumpPressed = (jump != null && jump.WasPressedThisFrame()) || JumpOverride;
             DashPressed = (dash != null && dash.WasPressedThisFrame()) || DashOverride;
             SprintHeld = (dash != null && dash.IsPressed()) || SprintOverride;
+            FreeLookHeld = (freeLook != null && freeLook.IsPressed()) || FreeLookOverride;
             LockOnPressed = (lockOn != null && lockOn.WasPressedThisFrame()) || LockOnOverride;
             JumpOverride = DashOverride = LockOnOverride = false;
 

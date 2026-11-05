@@ -29,12 +29,18 @@
 [PASS] Animation Guardrail in RangeTerminal.cs (No Animator)
 [PASS] Animation Guardrail in RangeTerminal.cs (No Humanoid Bones)
 [PASS] Animation Guardrail in RangeTerminal.cs (No IK)
+[PASS] Animation Guardrail in RangeTerminalTriggerProxy.cs (No Animator)
+[PASS] Animation Guardrail in RangeTerminalTriggerProxy.cs (No Humanoid Bones)
+[PASS] Animation Guardrail in RangeTerminalTriggerProxy.cs (No IK)
 [PASS] Animation Guardrail in ShellCasingPool.cs (No Animator)
 [PASS] Animation Guardrail in ShellCasingPool.cs (No Humanoid Bones)
 [PASS] Animation Guardrail in ShellCasingPool.cs (No IK)
 [PASS] Animation Guardrail in ShootingTarget.cs (No Animator)
 [PASS] Animation Guardrail in ShootingTarget.cs (No Humanoid Bones)
 [PASS] Animation Guardrail in ShootingTarget.cs (No IK)
+[PASS] Animation Guardrail in TargetHitbox.cs (No Animator)
+[PASS] Animation Guardrail in TargetHitbox.cs (No Humanoid Bones)
+[PASS] Animation Guardrail in TargetHitbox.cs (No IK)
 [PASS] Animation Guardrail in TargetTrolley.cs (No Animator)
 [PASS] Animation Guardrail in TargetTrolley.cs (No Humanoid Bones)
 [PASS] Animation Guardrail in TargetTrolley.cs (No IK)
@@ -61,10 +67,14 @@
 [PASS] Non-allocating physics in PopperTarget.cs
 [PASS] Non-allocating physics in RangeTerminal.cs
 [PASS] Non-allocating physics in RangeTerminal.cs
+[PASS] Non-allocating physics in RangeTerminalTriggerProxy.cs
+[PASS] Non-allocating physics in RangeTerminalTriggerProxy.cs
 [PASS] Non-allocating physics in ShellCasingPool.cs
 [PASS] Non-allocating physics in ShellCasingPool.cs
 [PASS] Non-allocating physics in ShootingTarget.cs
 [PASS] Non-allocating physics in ShootingTarget.cs
+[PASS] Non-allocating physics in TargetHitbox.cs
+[PASS] Non-allocating physics in TargetHitbox.cs
 [PASS] Non-allocating physics in TargetTrolley.cs
 [PASS] Non-allocating physics in TargetTrolley.cs
 [PASS] Muzzle Socket Left Auto-creation
@@ -115,30 +125,83 @@
 [PASS] PopperTarget Hinged Down Flat (> 80 deg) when Dead
 [PASS] PopperTarget Elastic Pop-up Respawned After 2.5s
 [PASS] PopperTarget Restored to Full Health
+[PASS] PopperTarget Respawn Keeps The Fallen Angle (Spring Lifts It, No Snap)
 [PASS] LockOnSystem Initially Acquires Target 1 (Closest to Center)
 [PASS] LockOnSystem Automatically Switched to Target 2 on Target 1 Kill
 [PASS] LockOnSystem Cleanly Released Lock When No Alive Targets Remain
-[PASS] Yoru Controller Faces Target in Strafe Locomotion
+[PASS] Normal Play Faces The Crosshair (Facing = Aim)
+[PASS] Pressing S She Turns To The Camera Yaw, So Facing And Bullet Direction Agree
+[PASS] S Backs Up Relative To The Camera (Away From Where She Faces)
+[PASS] Backing Up Shows As Negative Local Forward Speed (MoveY)
+[PASS] Backing Up Plays The Walk In Reverse (Negative LocoMult Stopgap)
+[PASS] A Side-Steps Relative To The Camera (Not World Left)
+[PASS] Side-Stepping She Keeps Facing The Crosshair (MoveX Is Negative)
+[PASS] Side-Stepping Plays The Walk Forward (No Reverse)
+[PASS] Standing Still She Still Follows The Crosshair
+[PASS] Standing Still The Playback Returns To Forward
+[PASS] A 180 Degree Turn Is Fast (< 0.4 s) But Not A Snap
+[PASS] The Turn Never Exceeds turnSpeed
+[PASS] W Moves Toward The Target (Camera Free, Not Camera Relative)
+[PASS] She Keeps Facing The Target Walking Toward It
+[PASS] S Moves Away From The Target (Camera Free, Not Camera Relative)
+[PASS] She Keeps Facing The Target Backing Away
+[PASS] D Circles To The Right Of The Target (Camera Free, Not Camera Relative)
+[PASS] She Keeps Facing The Target While Circling
+[PASS] A Circles To The Left Of The Target (Camera Free, Not Camera Relative)
+[PASS] She Keeps Facing The Target While Circling
+[PASS] Circling Shows As Sideways Local Speed (MoveX)
+[PASS] Circling Plays The Walk Forward
+[PASS] Sprinting While Locked On She Faces The Way She Runs, Not The Target
+[PASS] The Sprint Always Plays Forward At Full Speed
+[PASS] Stopping Ends The Sprint And She Turns Back To The Target
+[PASS] After The Release She Faces The Crosshair Again
+[PASS] Holding Shift While Moving Starts The Sprint
+[PASS] Sprinting She Faces The Way She Runs (Right Of The Camera)
+[PASS] The Sprint Is Forward Motion In Her Own Frame (MoveY = Run Speed / Walk Speed)
+[PASS] Aiming Ends The Sprint And She Turns Back To The Crosshair
+[PASS] While Aiming She Walks (Side-Steps) At Walking Speed
+[PASS] Shift Still Held: The Sprint Resumes When The Aim Is Let Go
+[PASS] Firing Ends The Sprint And She Turns Back To The Crosshair
+[PASS] Right After The Last Shot She Is Still Out Of The Sprint (No Flicker Between Shots)
+[PASS] A Moment After The Last Shot The Sprint Resumes While Shift Is Held
+[PASS] Stopping Ends The Sprint And She Turns Back To The Crosshair
+[PASS] Sprinting Backwards She Turns Around And Runs Forward (No Reverse Clip)
+[PASS] Alt Starts Free Look And Freezes The Aim Heading
+[PASS] During Free Look The Aim Heading Stays Frozen While The Camera Yaw Moves On
+[PASS] While Alt Is Held She Does Not Turn With The Camera
+[PASS] While Alt Is Held W Keeps Going The Way She Faced Before
+[PASS] After Alt The Camera Swings Back To Where It Was
+[PASS] During The Swing Back She Keeps The Heading From Before
+[PASS] After Free Look She Follows The Crosshair Again
 [PASS] Yoru Controller Successfully Initiated Combat Dash
-[PASS] Directional Combat Dodge Vector Directed to Pressed Input (Left)
-[PASS] Yoru Controller Continues Facing Target During Directional Dodge
+[PASS] Dodge Direction Follows The Input Relative To The Camera (A = Camera Left)
+[PASS] During The Dodge She Turns Toward The Dash (No Dodge Clips Yet)
+[PASS] After The Dodge She Returns To Facing The Crosshair
+[PASS] A Dodge Without Input Goes Toward The Crosshair
+[PASS] Locked On The Dodge Direction Is Relative To The Target (A = Left Of The Target)
+[PASS] After A Locked-On Dodge She Faces The Target Again
+[PASS] Locked On A Dodge Without Input Goes Toward The Target
+[PASS] With dodgeFacesTravel Off She Keeps Facing The Target During The Dodge
+[PASS] Lock-On Never Steers The Camera (The Rig Has No lockTarget Any More)
+[PASS] The Crosshair Is Drawn While Locked On (No Lock Condition Around It)
 [PASS] Ammo Depleted for Resupply Test
 [PASS] Resupply Restored Left Mag to 15
 [PASS] Resupply Restored Right Mag to 15
 [PASS] Resupply Cleared Reload State
+[PASS] Firing Line Sits At The Shooter Standing Z (-2.5m)
 [PASS] Trolley Initial Distance Equals 10m
-[PASS] Trolley Recall Z Equals -0.2m (0.8m stop)
-[PASS] Trolley 5m Stop Z Equals 4.0m
-[PASS] Trolley 10m Stop Z Equals 9.0m
-[PASS] Trolley 15m Stop Z Equals 14.0m
-[PASS] Trolley 25m Stop Z Equals 24.0m
+[PASS] Trolley Recall Z Equals -1.7m (0.8m from the firing line)
+[PASS] Trolley 5m Stop Z Equals 2.5m
+[PASS] Trolley 10m Stop Z Equals 7.5m
+[PASS] Trolley 15m Stop Z Equals 12.5m
+[PASS] Trolley 25m Stop Z Equals 22.5m
 [PASS] Trolley In Transit After MoveToDistance(15m)
 [PASS] Trolley Target Distance Set to 15m
-[PASS] Trolley Target Z Set to 14.0m
+[PASS] Trolley Target Z Set to 12.5m
 [PASS] Trolley Critically Damped Travel Completed
 [PASS] Trolley Arrived at 15m Stop
 [PASS] Trolley Recall Target Distance Equals 0.8m
-[PASS] Trolley Recall Target Z Equals -0.2m
+[PASS] Trolley Recall Target Z Equals -1.7m
 [PASS] Paper Target Bullseye Center Hit Scores 10 Pts
 [PASS] Paper Target Inner Bullseye Radius (<=0.05m) Scores 10 Pts
 [PASS] Paper Target 9-Ring Radius (<=0.10m) Scores 9 Pts
@@ -165,6 +228,9 @@
 [PASS] FreshPaper Cleared Shot Count
 [PASS] FreshPaper Cleared Total Score
 [PASS] FreshPaper Reset Extreme Spread to 0.0 cm
+[PASS] Paper Hole Decals Cap At The Pool Size
+[PASS] Paper Hole Decals Ring Buffer Wraps To The Oldest Slot
+[PASS] FreshPaper Clears Every Hole Decal
 [PASS] Terminal Initially in Standby (Player Outside)
 [PASS] Terminal Activated When Player Steps Into Stall
 [PASS] Terminal Dispatched SendTo25M
@@ -186,6 +252,9 @@
 [PASS] Active Shell Count Incremented on Right Ejection
 [PASS] RecycleAll Restored Active Count to 0
 [PASS] RecycleAll Restored All Casings to Available Pool
+[PASS] Shell Casing Length Matches A 9mm Cartridge (< 2cm)
+[PASS] Shell Casings Sit On The Ignore Raycast Layer
+[PASS] Shell Ejection Velocity Is Physical (< 6 m/s)
 ======================================================
-[CombatSystemVerifier] ALL TESTS PASSED! (185/185)
+[CombatSystemVerifier] ALL TESTS PASSED! (254/254)
 ======================================================

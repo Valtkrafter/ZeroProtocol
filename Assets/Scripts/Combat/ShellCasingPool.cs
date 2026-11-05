@@ -5,26 +5,39 @@ namespace ZeroProtocol.Combat
 {
     /// <summary>
     /// Pre-warmed object pool of physical brass pistol cartridge casings with Rigidbody and capsule colliders.
-    /// Ejected dynamically on each alternating pistol discharge from DualPistolCombat.
-    /// Zero runtime GC allocations. Casings collide naturally with counters/floor and recycle after 8 seconds.
+    /// Ejected on each alternating pistol discharge from DualPistolCombat. Casings are 9mm scale, leave the gun at
+    /// physical speeds (m/s), land on the floor and counters, shrink away at the end of their life and recycle.
+    /// They sit on the Ignore Raycast layer, so a casing lying in the line of fire never absorbs a bullet.
+    /// Zero runtime GC allocations.
     /// </summary>
     public class ShellCasingPool : MonoBehaviour
     {
+        /// <summary>Unity's built-in "Ignore Raycast" layer. DualPistolCombat skips it in every hitscan query.</summary>
+        public const int CasingLayer = 2;
+
         public DualPistolCombat combat;
 
         [Header("Pool Configuration")]
-        [Tooltip("Number of pre-warmed casing instances in the pool")]
-        public int poolSize = 36;
-        [Tooltip("Lifetime in seconds before casing fades and is recycled to pool (Specification: 8s)")]
+        [Tooltip("Number of pre-warmed casing instances. 8 pistol shots per second for an 8 second life needs about 70.")]
+        public int poolSize = 72;
+        [Tooltip("Lifetime in seconds before a casing recycles to the pool (Specification: 8s)")]
         public float casingLifetime = 8.0f;
+        [Tooltip("Final seconds of a casing's life, spent shrinking away instead of vanishing")]
+        public float fadeDuration = 0.35f;
 
         [Header("Ejection Dynamics")]
         public Vector3 leftEjectionOffset = new Vector3(-0.15f, 0.08f, -0.05f);
         public Vector3 rightEjectionOffset = new Vector3(0.15f, 0.08f, -0.05f);
+        [Tooltip("Ejection velocity in m/s (applied as a velocity change, so it does not depend on casing mass)")]
         public Vector3 leftEjectionImpulse = new Vector3(-2.4f, 1.9f, -0.4f);
         public Vector3 rightEjectionImpulse = new Vector3(2.4f, 1.9f, -0.4f);
+        [Tooltip("Random spread added to the ejection velocity (m/s)")]
         public float impulseRandomSpread = 0.30f;
+        [Tooltip("Random spin in rad/s")]
         public float angularSpinSpeed = 28f;
+
+        // 9mm cartridge: 9.9mm across, 19mm long. Unity's cylinder is 2 units tall and 2 units across.
+        static readonly Vector3 CasingScale = new Vector3(0.005f, 0.0095f, 0.005f);
 
         public class CasingItem
         {
@@ -103,6 +116,11 @@ namespace ZeroProtocol.Combat
                 {
                     RecycleItem(i);
                 }
+                else if (item.timer < fadeDuration)
+                {
+                    // Shrink away over the last moments of life instead of popping out of existence
+                    item.transform.localScale = CasingScale * (item.timer / fadeDuration);
+                }
             }
         }
 
@@ -120,7 +138,7 @@ namespace ZeroProtocol.Combat
             }
             else if (activeCasings.Count > 0)
             {
-                // Recycle oldest active instance
+                // Pool exhausted: recycle the oldest active instance
                 item = activeCasings[0];
                 activeCasings.RemoveAt(0);
             }
@@ -133,19 +151,19 @@ namespace ZeroProtocol.Combat
 
             item.transform.position = spawnPos;
             item.transform.rotation = Random.rotation;
+            item.transform.localScale = CasingScale;
             item.go.SetActive(true);
 
             // Reset rigidbody velocities
             item.rb.linearVelocity = Vector3.zero;
             item.rb.angularVelocity = Vector3.zero;
 
-            // Apply realistic lateral ejection impulse and angular spin
-            Vector3 baseImpulse = (hand == HandSide.Left) ? leftEjectionImpulse : rightEjectionImpulse;
-            Vector3 impulseWorld = refTransform.TransformDirection(baseImpulse) + Random.insideUnitSphere * impulseRandomSpread;
-            item.rb.AddForce(impulseWorld, ForceMode.Impulse);
-
-            Vector3 torque = Random.insideUnitSphere * angularSpinSpeed;
-            item.rb.AddTorque(torque, ForceMode.Impulse);
+            // Physical ejection: a velocity in m/s to the side and up, plus a random spin.
+            // (Previously an Impulse of this size on a 12g casing launched it at roughly 200 m/s.)
+            Vector3 baseVelocity = (hand == HandSide.Left) ? leftEjectionImpulse : rightEjectionImpulse;
+            Vector3 velocityWorld = refTransform.TransformDirection(baseVelocity) + Random.insideUnitSphere * impulseRandomSpread;
+            item.rb.AddForce(velocityWorld, ForceMode.VelocityChange);
+            item.rb.AddTorque(Random.insideUnitSphere * angularSpinSpeed, ForceMode.VelocityChange);
 
             item.timer = casingLifetime;
             activeCasings.Add(item);
@@ -162,9 +180,10 @@ namespace ZeroProtocol.Combat
         void RecycleItem(int index)
         {
             CasingItem item = activeCasings[index];
-            item.go.SetActive(false);
+            // Stop the body before hiding it, so no stale velocity survives into the next ejection
             item.rb.linearVelocity = Vector3.zero;
             item.rb.angularVelocity = Vector3.zero;
+            item.go.SetActive(false);
             activeCasings.RemoveAt(index);
             availablePool.Enqueue(item);
         }
@@ -206,10 +225,11 @@ namespace ZeroProtocol.Combat
             {
                 GameObject go = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
                 go.name = $"Casing_{i}";
+                go.layer = CasingLayer;
                 go.transform.SetParent(poolRoot, false);
-                go.transform.localScale = new Vector3(0.012f, 0.018f, 0.012f); // Handgun 9mm cartridge scale
+                go.transform.localScale = CasingScale;
 
-                // Replace cylinder collider with smooth capsule collider
+                // Replace cylinder collider with smooth capsule collider (sized in the casing's local units)
                 Collider cylCol = go.GetComponent<Collider>();
                 if (cylCol != null) DestroyImmediate(cylCol);
 
@@ -230,6 +250,7 @@ namespace ZeroProtocol.Combat
 
                 Rigidbody rb = go.AddComponent<Rigidbody>();
                 rb.mass = 0.012f;
+                rb.maxAngularVelocity = 60f; // Keep the spin: the default cap of 7 rad/s would flatten it
                 rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
                 rb.interpolation = RigidbodyInterpolation.Interpolate;
 

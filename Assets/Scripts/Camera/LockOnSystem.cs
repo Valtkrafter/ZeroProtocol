@@ -7,12 +7,14 @@ namespace ZeroProtocol.CameraSystem
 {
     /// <summary>
     /// True Combat Lock-On System (Middle Mouse Button toggle).
-    /// Manages target acquisition, auto-switching on target death/destruction,
-    /// and camera rig targeting.
+    /// Manages target acquisition (the target nearest the crosshair that is in view), auto-switching on target death/destruction and the range break.
+    /// The lock only turns her body to the target and gives W/A/S/D their frame (YoruController reads Current);
+    /// the camera is not steered and the crosshair stays free.
     /// </summary>
     [RequireComponent(typeof(GameInput))]
     public class LockOnSystem : MonoBehaviour
     {
+        [Tooltip("Only used to find the target nearest the crosshair when the lock is switched on; the lock never moves the camera.")]
         public ThirdPersonCamera cameraRig;
         public float maxLockDistance = 35f;
         public float breakDistance = 42f;
@@ -186,20 +188,12 @@ namespace ZeroProtocol.CameraSystem
         public void SetTarget(LockOnTarget target)
         {
             Current = target;
-            if (cameraRig != null)
-            {
-                cameraRig.lockTarget = target != null ? target.transform : null;
-            }
             OnLockTargetChanged?.Invoke(Current);
         }
 
         public void Release()
         {
             Current = null;
-            if (cameraRig != null)
-            {
-                cameraRig.lockTarget = null;
-            }
             OnLockTargetChanged?.Invoke(null);
         }
     }

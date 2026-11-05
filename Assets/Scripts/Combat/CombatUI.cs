@@ -276,7 +276,7 @@ namespace ZeroProtocol.Combat
             float cx = Screen.width * 0.5f;
             float cy = Screen.height * 0.5f;
 
-            // 1. Draw Bloom Crosshair
+            // 1. Draw Bloom Crosshair (always, also while locked on: the lock only turns her body, the crosshair and the camera stay free)
             DrawCrosshair(cx, cy);
 
             // 2. Draw 2-Stage Hitmarkers

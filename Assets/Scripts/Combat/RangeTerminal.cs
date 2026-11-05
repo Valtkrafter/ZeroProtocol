@@ -1,15 +1,18 @@
 using System;
 using System.Text;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 namespace ZeroProtocol.Combat
 {
     /// <summary>
     /// Proximity floating holographic cyber-terminal on each firing stall counter.
-    /// Detects player presence in stall trigger volume. Displays live target status,
-    /// distance, hit count, score, grouping spread in cm, and target mini-schematic.
-    /// Handles hotkeys [1-4] Distance, [T] Recall, [F] Fresh Paper, [R] Reset Steel Targets.
-    /// Zero runtime GC allocations.
+    /// RangeTerminalTriggerProxy reports the player entering and leaving the stall (SetPlayerInside).
+    /// Displays live target status, distance from the firing line, hit count, score, grouping spread in cm,
+    /// MOA at that distance, and a mini target plot.
+    /// Hotkeys while inside the stall: [1-4] Distance, [T] Recall, [F] Fresh Paper, [G] Reset Steel Targets.
+    /// [R] stays Reload, so reloading never resets the range.
+    /// Zero runtime GC allocations on the hotkey path.
     /// </summary>
     public class RangeTerminal : MonoBehaviour
     {
@@ -91,52 +94,39 @@ namespace ZeroProtocol.Combat
             }
         }
 
-        void OnTriggerEnter(Collider other)
-        {
-            if (other.CompareTag("Player") || other.GetComponent<ZeroProtocol.Player.YoruController>() != null || other.GetComponent<CharacterController>() != null)
-            {
-                SetPlayerInside(true);
-            }
-        }
-
-        void OnTriggerExit(Collider other)
-        {
-            if (other.CompareTag("Player") || other.GetComponent<ZeroProtocol.Player.YoruController>() != null || other.GetComponent<CharacterController>() != null)
-            {
-                SetPlayerInside(false);
-            }
-        }
-
         void Update()
         {
             if (!isPlayerInside) return;
 
-            // Direct keyboard hotkeys while player stands in stall
-            if (Input.GetKeyDown(KeyCode.Alpha1) || Input.GetKeyDown(KeyCode.Keypad1))
+            // The project runs the Input System only, so the legacy Input class would throw here every frame
+            Keyboard keyboard = Keyboard.current;
+            if (keyboard == null) return;
+
+            if (keyboard.digit1Key.wasPressedThisFrame || keyboard.numpad1Key.wasPressedThisFrame)
             {
                 SendTo5M();
             }
-            else if (Input.GetKeyDown(KeyCode.Alpha2) || Input.GetKeyDown(KeyCode.Keypad2))
+            else if (keyboard.digit2Key.wasPressedThisFrame || keyboard.numpad2Key.wasPressedThisFrame)
             {
                 SendTo10M();
             }
-            else if (Input.GetKeyDown(KeyCode.Alpha3) || Input.GetKeyDown(KeyCode.Keypad3))
+            else if (keyboard.digit3Key.wasPressedThisFrame || keyboard.numpad3Key.wasPressedThisFrame)
             {
                 SendTo15M();
             }
-            else if (Input.GetKeyDown(KeyCode.Alpha4) || Input.GetKeyDown(KeyCode.Keypad4))
+            else if (keyboard.digit4Key.wasPressedThisFrame || keyboard.numpad4Key.wasPressedThisFrame)
             {
                 SendTo25M();
             }
-            else if (Input.GetKeyDown(KeyCode.T))
+            else if (keyboard.tKey.wasPressedThisFrame)
             {
                 RecallTarget();
             }
-            else if (Input.GetKeyDown(KeyCode.F))
+            else if (keyboard.fKey.wasPressedThisFrame)
             {
                 FreshPaper();
             }
-            else if (Input.GetKeyDown(KeyCode.R))
+            else if (keyboard.gKey.wasPressedThisFrame)
             {
                 ResetSteelTargets();
             }
@@ -283,7 +273,7 @@ namespace ZeroProtocol.Combat
             // Render 5x5 ASCII mini-target schematic showing plotted bullet holes
             BuildTargetSchematic();
 
-            displayBuilder.Append("[1-4] DIST  [T] RECALL  [F] FRESH  [R] RESET");
+            displayBuilder.Append("[1-4] DIST  [T] RECALL  [F] FRESH  [G] RESET");
 
             terminalTextMesh.text = displayBuilder.ToString();
         }

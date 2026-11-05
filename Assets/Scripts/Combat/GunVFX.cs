@@ -207,8 +207,8 @@ namespace ZeroProtocol.Combat
             if (item != null)
             {
                 item.go.transform.position = hitPoint + hitNormal * 0.02f;
-                Vector3 upVec = Mathf.Abs(hitNormal.y) > 0.99f ? Vector3.forward : Vector3.up;
-                item.go.transform.rotation = Quaternion.LookRotation(hitNormal, upVec);
+                // The cone emits along local +Y, so turn that axis onto the surface normal: sparks leave the surface, not upward
+                item.go.transform.rotation = Quaternion.FromToRotation(Vector3.up, hitNormal);
                 item.go.SetActive(true);
                 item.particles.Clear();
                 item.particles.Play();

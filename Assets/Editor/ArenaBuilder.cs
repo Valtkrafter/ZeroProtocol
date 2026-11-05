@@ -170,10 +170,11 @@ namespace ZeroProtocol.EditorTools
             }
 
             // Distance Threshold Floor Stripes
-            CreateFloorThresholdStripe(rangeRoot, "Threshold_5M", new Vector3(0f, 0.008f, 4f), 24f, stripeMat);
-            CreateFloorThresholdStripe(rangeRoot, "Threshold_10M", new Vector3(0f, 0.008f, 9f), 24f, stripeMat);
-            CreateFloorThresholdStripe(rangeRoot, "Threshold_15M", new Vector3(0f, 0.008f, 14f), 24f, stripeMat);
-            CreateFloorThresholdStripe(rangeRoot, "Threshold_25M", new Vector3(0f, 0.008f, 24f), 24f, stripeMat);
+            // Stop markers come from the trolley constants, so they always sit at the distance the HUD reports
+            CreateFloorThresholdStripe(rangeRoot, "Threshold_5M", new Vector3(0f, 0.008f, TargetTrolley.Z5M), 24f, stripeMat);
+            CreateFloorThresholdStripe(rangeRoot, "Threshold_10M", new Vector3(0f, 0.008f, TargetTrolley.Z10M), 24f, stripeMat);
+            CreateFloorThresholdStripe(rangeRoot, "Threshold_15M", new Vector3(0f, 0.008f, TargetTrolley.Z15M), 24f, stripeMat);
+            CreateFloorThresholdStripe(rangeRoot, "Threshold_25M", new Vector3(0f, 0.008f, TargetTrolley.Z25M), 24f, stripeMat);
 
             // Rear Ammo Resupply Counter at Z = -7.5m
             CreateAmmoCrate(rangeRoot, "AmmoResupplyStation", new Vector3(-6f, 0f, -7.5f), crateMat, neonCyanMat);
@@ -195,6 +196,7 @@ namespace ZeroProtocol.EditorTools
                 var downlightGo = new GameObject("Downlight");
                 downlightGo.transform.SetParent(laneRoot, false);
                 downlightGo.transform.position = new Vector3(lx, 4.2f, -2.75f);
+                downlightGo.transform.rotation = Quaternion.Euler(90f, 0f, 0f); // spot points straight down onto the booth
                 var spot = downlightGo.AddComponent<Light>();
                 spot.type = LightType.Spot;
                 spot.spotAngle = 75f;
@@ -232,22 +234,22 @@ namespace ZeroProtocol.EditorTools
                 // Motorized Target Trolley Carrier
                 var trolleyGo = new GameObject("TargetTrolley");
                 trolleyGo.transform.SetParent(laneRoot, false);
-                trolleyGo.transform.position = new Vector3(lx, 3.4f, 9.0f); // Initially at 10m stop (Z = 9.0m)
+                trolleyGo.transform.position = new Vector3(lx, 3.4f, TargetTrolley.Z10M); // Initially at the 10m stop
 
                 var trolley = trolleyGo.AddComponent<TargetTrolley>();
-                trolley.boothOriginZ = -1.0f;
+                trolley.boothOriginZ = TargetTrolley.FiringLineZ;
                 trolley.smoothTime = 0.60f;
                 trolley.maxSpeed = 8.5f;
 
                 // Carriage Body
-                var carriage = Box(trolleyGo.transform, "CarriageBody", new Vector3(0.7f, 0.18f, 0.45f), new Vector3(lx, 3.32f, 9.0f), blockMat);
+                var carriage = Box(trolleyGo.transform, "CarriageBody", new Vector3(0.7f, 0.18f, 0.45f), new Vector3(lx, 3.32f, TargetTrolley.Z10M), blockMat);
                 trolley.carriageTransform = carriage.transform;
 
                 // Suspension Cables hanging down to paper target
                 var suspRoot = new GameObject("SuspensionCables").transform;
                 suspRoot.SetParent(trolleyGo.transform, false);
-                var cableL = Box(suspRoot, "Cable_L", new Vector3(0.015f, 1.4f, 0.015f), new Vector3(lx - 0.24f, 2.5f, 9.0f), steelMat);
-                var cableR = Box(suspRoot, "Cable_R", new Vector3(0.015f, 1.4f, 0.015f), new Vector3(lx + 0.24f, 2.5f, 9.0f), steelMat);
+                var cableL = Box(suspRoot, "Cable_L", new Vector3(0.015f, 1.4f, 0.015f), new Vector3(lx - 0.24f, 2.5f, TargetTrolley.Z10M), steelMat);
+                var cableR = Box(suspRoot, "Cable_R", new Vector3(0.015f, 1.4f, 0.015f), new Vector3(lx + 0.24f, 2.5f, TargetTrolley.Z10M), steelMat);
                 var cl = cableL.GetComponent<Collider>(); if (cl != null) Object.DestroyImmediate(cl);
                 var cr = cableR.GetComponent<Collider>(); if (cr != null) Object.DestroyImmediate(cr);
 
@@ -255,7 +257,7 @@ namespace ZeroProtocol.EditorTools
                 // and prevents non-uniform shearing on dynamic bullet hole decals
                 var paperTargetGo = new GameObject("PaperTargetSheet");
                 paperTargetGo.transform.SetParent(trolleyGo.transform, false);
-                paperTargetGo.transform.position = new Vector3(lx, 1.4f, 9.0f);
+                paperTargetGo.transform.position = new Vector3(lx, 1.4f, TargetTrolley.Z10M);
                 paperTargetGo.transform.localScale = Vector3.one;
 
                 var paperCol = paperTargetGo.AddComponent<BoxCollider>();
@@ -282,20 +284,22 @@ namespace ZeroProtocol.EditorTools
 
                 // Deep Reactive Steel Targets in Lane
                 // 30m Steel Popper (drops flat 90 degrees, auto resets)
-                var popperGo = CreatePopperTarget(laneRoot, $"Popper_30M_{laneId}", new Vector3(lx, 0f, 29.0f), steelMat, blockMat);
+                var popperGo = CreatePopperTarget(laneRoot, $"Popper_30M_{laneId}", new Vector3(lx, 0f, TargetTrolley.FiringLineZ + 30f), steelMat, blockMat);
                 var popper = popperGo.GetComponentInChildren<PopperTarget>();
 
                 // 40m Reactive Targets
                 GameObject silTargetGo = null;
                 if (laneIdx == 1 || laneIdx == 2)
                 {
-                    silTargetGo = CreateShootingTarget(laneRoot, $"Silhouette_40M_{laneId}", new Vector3(lx, 0f, 39.0f), dummyMat, headMat);
+                    silTargetGo = CreateShootingTarget(laneRoot, $"Silhouette_40M_{laneId}", new Vector3(lx, 0f, TargetTrolley.FiringLineZ + 40f), dummyMat, headMat);
                 }
 
-                // 50m Elevated Moving Rail Target in Lane 4
+                // 50m Elevated Moving Rail Target in Lane 4: the deck is 1.69m up, the target rides it from X - 2.5m to X + 2.5m
+                ShootingTarget movingTarget = null;
                 if (laneIdx == 3)
                 {
-                    CreateElevatedRailTarget(laneRoot, "MovingRailTarget_50M", new Vector3(lx - 2.5f, 1.6f, 49.0f), new Vector3(5f, 0f, 0f), blockMat, dummyMat, headMat);
+                    var railRoot = CreateElevatedRailTarget(laneRoot, "MovingRailTarget_50M", new Vector3(lx - 2.5f, 1.69f, TargetTrolley.FiringLineZ + 50f), new Vector3(5f, 0f, 0f), blockMat, dummyMat, headMat);
+                    movingTarget = railRoot.GetComponentInChildren<ShootingTarget>();
                 }
 
                 // Proximity Floating Holographic Cyber-Terminal
@@ -313,6 +317,7 @@ namespace ZeroProtocol.EditorTools
                     var st = silTargetGo.GetComponentInChildren<ShootingTarget>();
                     if (st != null) laneTargetsList.Add(st);
                 }
+                if (movingTarget != null) laneTargetsList.Add(movingTarget); // the terminal's reset also raises the rail target
                 terminal.laneTargets = laneTargetsList.ToArray();
 
                 // Wire proximity trigger to terminal
@@ -322,12 +327,12 @@ namespace ZeroProtocol.EditorTools
 
             // -----------------------------------------------------------
             // 4. PLAYER CHARACTER RIG & COMBAT PIPELINE
-            // Spawn inside Lane 2 booth at X = -3m, Z = -2.5m facing +Z
+            // Spawn on the firing line of Lane 2 (X = -3m, Z = FiringLineZ) facing +Z. Every range distance is measured from here.
             // -----------------------------------------------------------
             var yoruPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(YoruPrefabPath);
             var player = new GameObject("Player");
             player.tag = "Player";
-            player.transform.position = new Vector3(-3f, 0.05f, -2.5f);
+            player.transform.position = new Vector3(-3f, 0.05f, TargetTrolley.FiringLineZ);
             var cc = player.AddComponent<CharacterController>();
             cc.height = 1.5f; cc.radius = 0.28f; cc.center = new Vector3(0f, 0.78f, 0f);
             cc.stepOffset = 0.35f; cc.slopeLimit = 50f; cc.skinWidth = 0.03f;
@@ -422,6 +427,17 @@ namespace ZeroProtocol.EditorTools
             return go;
         }
 
+        static GameObject LocalBox(Transform parent, string name, Vector3 size, Vector3 localPos, Material mat)
+        {
+            var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            go.name = name;
+            go.transform.SetParent(parent, false);
+            go.transform.localPosition = localPos;
+            go.transform.localScale = size;
+            go.GetComponent<Renderer>().sharedMaterial = mat;
+            return go;
+        }
+
         static GameObject CreateFloorThresholdStripe(Transform parent, string name, Vector3 centerPos, float width, Material mat)
         {
             var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
@@ -490,44 +506,48 @@ namespace ZeroProtocol.EditorTools
             var pedestal = Box(termRoot.transform, "Pedestal", new Vector3(0.12f, 0.28f, 0.12f), counterBasePos + new Vector3(0f, 0.14f, 0f), baseMat);
             var pc = pedestal.GetComponent<Collider>(); if (pc != null) Object.DestroyImmediate(pc);
 
-            // Angled Holographic Screen Frame
+            // Screen rig: an unscaled root tilted 22 degrees toward the shooter. Bezel, face, text and light are children of it,
+            // but only the bezel carries a non-uniform scale, so the text is never stretched.
+            var screenRig = new GameObject("ScreenRig");
+            screenRig.transform.SetParent(termRoot.transform, false);
+            screenRig.transform.position = counterBasePos + new Vector3(0f, 0.40f, 0f);
+            screenRig.transform.rotation = Quaternion.Euler(22f, 0f, 0f);
+
+            // Bezel
             var screenFrame = GameObject.CreatePrimitive(PrimitiveType.Cube);
             screenFrame.name = "ScreenFrame";
-            screenFrame.transform.SetParent(termRoot.transform, false);
-            screenFrame.transform.position = counterBasePos + new Vector3(0f, 0.40f, 0f);
-            screenFrame.transform.rotation = Quaternion.Euler(22f, 0f, 0f);
+            screenFrame.transform.SetParent(screenRig.transform, false);
+            screenFrame.transform.localPosition = Vector3.zero;
             screenFrame.transform.localScale = new Vector3(0.75f, 0.45f, 0.03f);
             screenFrame.GetComponent<Renderer>().sharedMaterial = baseMat;
             var sfc = screenFrame.GetComponent<Collider>(); if (sfc != null) Object.DestroyImmediate(sfc);
 
-            // Screen Display Surface
+            // Screen face: a Unity quad faces -Z by default, which is the shooter's side (no flip)
             var screenFace = GameObject.CreatePrimitive(PrimitiveType.Quad);
             screenFace.name = "ScreenFace";
-            screenFace.transform.SetParent(screenFrame.transform, false);
-            screenFace.transform.localPosition = new Vector3(0f, 0f, -0.55f);
-            screenFace.transform.localRotation = Quaternion.Euler(0f, 180f, 0f);
-            screenFace.transform.localScale = new Vector3(0.92f, 0.88f, 1f);
+            screenFace.transform.SetParent(screenRig.transform, false);
+            screenFace.transform.localPosition = new Vector3(0f, 0f, -0.02f);
+            screenFace.transform.localScale = new Vector3(0.69f, 0.40f, 1f);
             screenFace.GetComponent<Renderer>().sharedMaterial = baseMat;
             var sdc = screenFace.GetComponent<Collider>(); if (sdc != null) Object.DestroyImmediate(sdc);
 
-            // Holographic 3D Text Mesh
+            // Holographic text: readable from -Z, anchored to the top-left corner of the screen (0.69 x 0.40 m)
             var textGo = new GameObject("TerminalText");
-            textGo.transform.SetParent(screenFrame.transform, false);
-            textGo.transform.localPosition = new Vector3(-0.45f, 0.40f, -0.60f);
-            textGo.transform.localRotation = Quaternion.Euler(0f, 180f, 0f);
+            textGo.transform.SetParent(screenRig.transform, false);
+            textGo.transform.localPosition = new Vector3(-0.33f, 0.18f, -0.03f);
             var tm = textGo.AddComponent<TextMesh>();
             tm.fontSize = 28;
-            tm.characterSize = 0.024f;
+            tm.characterSize = 0.0095f;
             tm.lineSpacing = 1.15f;
             tm.alignment = TextAlignment.Left;
             tm.anchor = TextAnchor.UpperLeft;
             tm.color = new Color(0.0f, 0.941f, 1.0f);
             tm.fontStyle = FontStyle.Bold;
 
-            // Terminal Holographic Accent Light
+            // Terminal holographic accent light
             var lightGo = new GameObject("TerminalLight");
-            lightGo.transform.SetParent(screenFrame.transform, false);
-            lightGo.transform.localPosition = new Vector3(0f, 0f, -0.6f);
+            lightGo.transform.SetParent(screenRig.transform, false);
+            lightGo.transform.localPosition = new Vector3(0f, 0f, -0.2f);
             var lt = lightGo.AddComponent<Light>();
             lt.type = LightType.Point;
             lt.range = 1.6f;
@@ -554,7 +574,7 @@ namespace ZeroProtocol.EditorTools
             basePlate.name = "StandBase";
             basePlate.transform.SetParent(targetRoot.transform, false);
             basePlate.transform.localPosition = new Vector3(0f, 0.05f, 0f);
-            basePlate.transform.localScale = new Vector3(0.9f, 0.05f, 0.9f);
+            basePlate.transform.localScale = new Vector3(0.45f, 0.05f, 0.45f); // 90 cm stand
             basePlate.GetComponent<Renderer>().sharedMaterial = bodyMat;
 
             var dummyTilt = new GameObject("DummyTilt");
@@ -564,7 +584,7 @@ namespace ZeroProtocol.EditorTools
             var body = GameObject.CreatePrimitive(PrimitiveType.Capsule);
             body.name = "Body";
             body.transform.SetParent(dummyTilt.transform, false);
-            body.transform.localPosition = new Vector3(0f, 0.85f, 0f);
+            body.transform.localPosition = new Vector3(0f, 0.75f, 0f); // capsule bottom rests on the stand
             body.transform.localScale = new Vector3(0.65f, 0.65f, 0.45f);
             var bodyRend = body.GetComponent<Renderer>();
             bodyRend.sharedMaterial = bodyMat;
@@ -604,43 +624,43 @@ namespace ZeroProtocol.EditorTools
             targetRoot.transform.SetParent(parent, false);
             targetRoot.transform.position = pos;
 
-            // Hinge base frame
+            // Ground block: the hinge stand
             var basePlate = GameObject.CreatePrimitive(PrimitiveType.Cube);
             basePlate.name = "HingeBase";
             basePlate.transform.SetParent(targetRoot.transform, false);
-            basePlate.transform.localPosition = new Vector3(0f, 0.1f, 0f);
-            basePlate.transform.localScale = new Vector3(0.9f, 0.2f, 0.5f);
+            basePlate.transform.localPosition = new Vector3(0f, 0.05f, 0f);
+            basePlate.transform.localScale = new Vector3(0.5f, 0.1f, 0.4f);
             basePlate.GetComponent<Renderer>().sharedMaterial = baseMat;
 
-            // Motorized hinge post
+            // Slim hinge post, from the base block up to the underside of the plate (0.05m to 0.70m)
             var post = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
             post.name = "HingePost";
             post.transform.SetParent(targetRoot.transform, false);
-            post.transform.localPosition = new Vector3(0f, 0.25f, 0f);
-            post.transform.localScale = new Vector3(0.35f, 0.15f, 0.35f);
+            post.transform.localPosition = new Vector3(0f, 0.375f, 0f);
+            post.transform.localScale = new Vector3(0.06f, 0.325f, 0.06f);
             post.GetComponent<Renderer>().sharedMaterial = baseMat;
 
-            // Hinging plate root (drops flat 90 degrees around X axis)
+            // Hinging plate root (drops flat 90 degrees around its X axis)
             var platePivot = new GameObject("PlatePivot");
             platePivot.transform.SetParent(targetRoot.transform, false);
             platePivot.transform.localPosition = new Vector3(0f, 0.3f, 0f);
 
-            // Circular steel target plate (body)
+            // Circular steel plate, 60 cm across, centred 1.0 m above the ground
             var disc = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
             disc.name = "SteelPlate";
             disc.transform.SetParent(platePivot.transform, false);
-            disc.transform.localPosition = new Vector3(0f, 0.75f, 0f);
+            disc.transform.localPosition = new Vector3(0f, 0.7f, 0f);
             disc.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
-            disc.transform.localScale = new Vector3(0.85f, 0.06f, 0.85f);
+            disc.transform.localScale = new Vector3(0.3f, 0.03f, 0.3f);
             var discRend = disc.GetComponent<Renderer>();
             discRend.sharedMaterial = steelMat;
 
-            // Target bullseye (head hitbox)
+            // Target bullseye (head hitbox), proud of the plate centre
             var bullseye = GameObject.CreatePrimitive(PrimitiveType.Sphere);
             bullseye.name = "Bullseye";
             bullseye.transform.SetParent(platePivot.transform, false);
-            bullseye.transform.localPosition = new Vector3(0f, 1.25f, 0f);
-            bullseye.transform.localScale = new Vector3(0.35f, 0.35f, 0.25f);
+            bullseye.transform.localPosition = new Vector3(0f, 0.7f, 0f);
+            bullseye.transform.localScale = new Vector3(0.14f, 0.14f, 0.08f);
             var bullseyeRend = bullseye.GetComponent<Renderer>();
             bullseyeRend.sharedMaterial = steelMat;
 
@@ -661,32 +681,38 @@ namespace ZeroProtocol.EditorTools
             headHitbox.parentTarget = popper;
 
             var lockTarget = platePivot.AddComponent<LockOnTarget>();
-            lockTarget.aimHeight = 0.85f;
+            lockTarget.aimHeight = 0.7f;
 
             return targetRoot;
         }
 
         static GameObject CreateElevatedRailTarget(Transform parent, string name, Vector3 startPos, Vector3 offset, Material trackMat, Material dummyMat, Material headMat)
         {
+            // startPos.y is the deck the dummy stands on: the beam sits just under it and two pillars carry the beam to the floor.
+            // Everything is placed in local space (Box() takes world positions, which buried the pillars under the floor).
             var railRoot = new GameObject(name);
             railRoot.transform.SetParent(parent, false);
             railRoot.transform.position = startPos;
 
-            // Elevation Support Pillars
-            Box(railRoot.transform, "Pillar_Left", new Vector3(0.45f, startPos.y + 0.1f, 0.45f), new Vector3(0f, -(startPos.y * 0.5f), 0f), trackMat);
-            Box(railRoot.transform, "Pillar_Right", new Vector3(0.45f, startPos.y + 0.1f, 0.45f), offset + new Vector3(0f, -(startPos.y * 0.5f), 0f), trackMat);
+            const float beamThickness = 0.18f;
+            float pillarHeight = startPos.y - beamThickness;
+            float pillarLocalY = pillarHeight * 0.5f - startPos.y;
 
-            // Elevated Track Beam
+            // Support pillars at both ends of the travel, floor to beam underside
+            LocalBox(railRoot.transform, "Pillar_Start", new Vector3(0.45f, pillarHeight, 0.45f), new Vector3(0f, pillarLocalY, 0f), trackMat);
+            LocalBox(railRoot.transform, "Pillar_End", new Vector3(0.45f, pillarHeight, 0.45f), new Vector3(offset.x, pillarLocalY, offset.z), trackMat);
+
+            // Elevated track beam, its top surface is the deck the target rides on
             var track = GameObject.CreatePrimitive(PrimitiveType.Cube);
             track.name = "ElevatedTrackBeam";
             track.transform.SetParent(railRoot.transform, false);
-            track.transform.localPosition = offset * 0.5f + new Vector3(0f, 0.05f, 0f);
-            track.transform.localScale = new Vector3(offset.magnitude + 1.2f, 0.18f, 0.4f);
+            track.transform.localPosition = offset * 0.5f + new Vector3(0f, -beamThickness * 0.5f, 0f);
+            track.transform.localScale = new Vector3(offset.magnitude + 1.2f, beamThickness, 0.4f);
             track.GetComponent<Renderer>().sharedMaterial = trackMat;
             var trackCollider = track.GetComponent<Collider>();
             if (trackCollider != null) Object.DestroyImmediate(trackCollider);
 
-            // Motorized Trolley
+            // Motorized trolley: the target rides the deck from start to end
             var mover = new GameObject("TrolleyMover");
             mover.transform.SetParent(railRoot.transform, false);
             mover.transform.localPosition = Vector3.zero;
@@ -847,122 +873,73 @@ namespace ZeroProtocol.EditorTools
 
         static Texture2D PaperBullseyeTexture()
         {
+            // Regenerated on every build (deterministic output). The texture is a power of two on purpose: Unity resamples
+            // non-power-of-two textures to the nearest power of two, which stretched the rings (512x791 came back as 512x1024).
+            // Each axis uses its own pixels-per-meter, so the texture covers the 0.55 x 0.85 m sheet 1:1 in meters and the
+            // rings are true circles that match the scoring radii in PaperTarget.
             string path = MatDir + "/PaperBullseye.png";
-            if (!File.Exists(path))
+            const float sheetW = 0.55f;
+            const float sheetH = 0.85f;
+            const int n = 1024;
+            const float ringHalfWidth = 0.0027f;     // about 2.7 mm
+            const float reticleHalfWidth = 0.0016f;  // about 1.6 mm
+
+            var tex = new Texture2D(n, n, TextureFormat.RGBA32, false);
+            Color paperBg = new Color(0.08f, 0.09f, 0.12f);
+            Color torso = new Color(0.17f, 0.18f, 0.25f);
+            Color cyanRing = new Color(0.0f, 0.941f, 1.0f);
+            Color yellowRing = new Color(1.0f, 0.745f, 0.043f);
+            Color whiteCross = new Color(0.85f, 0.9f, 1.0f, 0.6f);
+
+            float pxPerMX = n / sheetW;
+            float pxPerMY = n / sheetH;
+
+            for (int y = 0; y < n; y++)
             {
-                const int n = 512;
-                var tex = new Texture2D(n, n, TextureFormat.RGBA32, false);
-                Color paperBg = new Color(0.08f, 0.09f, 0.12f);
-                Color torso = new Color(0.17f, 0.18f, 0.25f);
-                Color cyanRing = new Color(0.0f, 0.941f, 1.0f);
-                Color yellowRing = new Color(1.0f, 0.745f, 0.043f);
-                Color whiteCross = new Color(0.85f, 0.9f, 1.0f, 0.6f);
-
-                float center = n * 0.5f;
-                float pxPerM = n / 0.55f;
-                float r10 = 0.05f * pxPerM;
-                float r9 = 0.10f * pxPerM;
-                float r8 = 0.16f * pxPerM;
-                float r7 = 0.22f * pxPerM;
-                float torsoW = 0.26f * pxPerM;
-                float torsoH = 0.42f * pxPerM;
-
-                for (int y = 0; y < n; y++)
+                for (int x = 0; x < n; x++)
                 {
-                    for (int x = 0; x < n; x++)
+                    // Position from the bullseye centre, in meters on the sheet
+                    float mx = (x - n * 0.5f) / pxPerMX;
+                    float my = (y - n * 0.5f) / pxPerMY;
+                    float dist = Mathf.Sqrt(mx * mx + my * my);
+
+                    Color col = paperBg;
+
+                    // Torso silhouette check (0.26 m half-width, 0.42 m half-height)
+                    if (Mathf.Abs(mx) <= 0.26f && Mathf.Abs(my) <= 0.42f)
                     {
-                        float dx = x - center;
-                        float dy = y - center;
-                        float dist = Mathf.Sqrt(dx * dx + dy * dy);
-
-                        Color col = paperBg;
-
-                        // Torso silhouette check
-                        if (Mathf.Abs(dx) <= torsoW && Mathf.Abs(dy) <= torsoH)
-                        {
-                            col = torso;
-                        }
-
-                        // Concentric rings
-                        if (dist <= r10)
-                        {
-                            col = yellowRing;
-                        }
-                        else if (Mathf.Abs(dist - r9) < 2.5f)
-                        {
-                            col = cyanRing;
-                        }
-                        else if (Mathf.Abs(dist - r8) < 2.5f)
-                        {
-                            col = cyanRing;
-                        }
-                        else if (Mathf.Abs(dist - r7) < 2.5f)
-                        {
-                            col = cyanRing;
-                        }
-
-                        // Reticle crosshair lines
-                        if ((Mathf.Abs(dx) < 1.5f || Mathf.Abs(dy) < 1.5f) && dist < r7)
-                        {
-                            col = Color.Lerp(col, whiteCross, 0.7f);
-                        }
-
-                        tex.SetPixel(x, y, col);
+                        col = torso;
                     }
+
+                    // Concentric rings: 10 pt disc (5 cm), then cyan rings at 9, 8 and 7 pts (10, 16, 22 cm)
+                    if (dist <= 0.05f)
+                    {
+                        col = yellowRing;
+                    }
+                    else if (Mathf.Abs(dist - 0.10f) < ringHalfWidth || Mathf.Abs(dist - 0.16f) < ringHalfWidth || Mathf.Abs(dist - 0.22f) < ringHalfWidth)
+                    {
+                        col = cyanRing;
+                    }
+
+                    // Reticle crosshair lines
+                    if ((Mathf.Abs(mx) < reticleHalfWidth || Mathf.Abs(my) < reticleHalfWidth) && dist < 0.22f)
+                    {
+                        col = Color.Lerp(col, whiteCross, 0.7f);
+                    }
+
+                    tex.SetPixel(x, y, col);
                 }
-                tex.Apply();
-                File.WriteAllBytes(path, tex.EncodeToPNG());
-                Object.DestroyImmediate(tex);
-                AssetDatabase.ImportAsset(path);
-                var imp = (TextureImporter)AssetImporter.GetAtPath(path);
-                imp.wrapMode = TextureWrapMode.Clamp;
-                imp.mipmapEnabled = true;
-                imp.filterMode = FilterMode.Trilinear;
-                imp.SaveAndReimport();
             }
+            tex.Apply();
+            File.WriteAllBytes(path, tex.EncodeToPNG());
+            Object.DestroyImmediate(tex);
+            AssetDatabase.ImportAsset(path);
+            var imp = (TextureImporter)AssetImporter.GetAtPath(path);
+            imp.wrapMode = TextureWrapMode.Clamp;
+            imp.mipmapEnabled = true;
+            imp.filterMode = FilterMode.Trilinear;
+            imp.SaveAndReimport();
             return AssetDatabase.LoadAssetAtPath<Texture2D>(path);
-        }
-    }
-
-    /// <summary>
-    /// Proxy component that routes trigger enter/exit from stall volume to the RangeTerminal.
-    /// </summary>
-    public class RangeTerminalTriggerProxy : MonoBehaviour
-    {
-        public RangeTerminal terminal;
-
-        void Start()
-        {
-            var col = GetComponent<BoxCollider>();
-            if (col != null && terminal != null)
-            {
-                // Check if player spawned inside the trigger volume at startup
-                var hits = Physics.OverlapBox(transform.position + col.center, col.size * 0.5f, transform.rotation);
-                for (int i = 0; i < hits.Length; i++)
-                {
-                    if (hits[i].CompareTag("Player") || hits[i].GetComponent<CharacterController>() != null || hits[i].GetComponent<ZeroProtocol.Player.YoruController>() != null)
-                    {
-                        terminal.SetPlayerInside(true);
-                        break;
-                    }
-                }
-            }
-        }
-
-        void OnTriggerEnter(Collider other)
-        {
-            if (terminal != null && (other.CompareTag("Player") || other.GetComponent<ZeroProtocol.Player.YoruController>() != null || other.GetComponent<CharacterController>() != null))
-            {
-                terminal.SetPlayerInside(true);
-            }
-        }
-
-        void OnTriggerExit(Collider other)
-        {
-            if (terminal != null && (other.CompareTag("Player") || other.GetComponent<ZeroProtocol.Player.YoruController>() != null || other.GetComponent<CharacterController>() != null))
-            {
-                terminal.SetPlayerInside(false);
-            }
         }
     }
 }

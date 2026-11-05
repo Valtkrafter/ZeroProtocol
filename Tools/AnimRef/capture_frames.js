@@ -94,3 +94,62 @@ window.__cap3 = async (o) => {
   return {got, canvas: [c.width, c.height]};
 };
 try { localStorage.setItem('__cap3src', window.__cap3.toString()); } catch (e) {}
+
+// ---------------------------------------------------------------------------------------------------------------------------------
+// Variante für eine VERDECKTE Browser-Fläche (28.10.: document.visibilityState meist 'hidden', dann feuert requestVideoFrameCallback nicht
+// und __cap2/__cap3 hängen). Statt Wiedergabe: pro Bild springen, auf das gezeigte Bild warten, die Bildzeit prüfen, nur dann zeichnen.
+// Die Aufgabe läuft in der Seite weiter, auch wenn der javascript_tool-Aufruf schon zurück ist: starten, später window.__jobState abfragen.
+// eval/new Function sind auf youtube.com durch Trusted Types gesperrt: den Code direkt in den Aufruf einfügen, nicht aus localStorage laden.
+//   window.__vid, __clear wie oben.  Start (ohne await):  window.__job({crop:[fx,fy,fw,fh], t0, t1, n, cols, cellW});  danach  window.__jobState
+//   Zyklusdauer:  window.__acorr({crop, t0, t1, step: 1/30});  danach window.__acState.res = [[lag in Schritten, mittlerer Bildunterschied]],
+//   das tiefste Minimum ist der Vollzyklus (Lag * step Sekunden). Rund 3 Minuten für 80 Bilder, solange die Fläche meist verdeckt ist.
+// Bildschirmfoto der Fläche ist nur ca. 554 x 710 CSS-Pixel groß: Blätter in Stücken zu 6 Bildern (3 x 2 Zellen à 165 px) aufnehmen.
+window.__vis = () => new Promise(res => { if (document.visibilityState === 'visible') return res(); const iv = setInterval(() => { if (document.visibilityState === 'visible') { clearInterval(iv); res(); } }, 200); });
+window.__frameAt = async (v, t, tol) => {
+  for (let a = 0; a < 5; a++) {
+    await window.__vis(); v.pause();
+    const got = await new Promise(res => {
+      let done = false; const to = setTimeout(() => { if (!done) { done = true; res(null); } }, 4000);
+      v.requestVideoFrameCallback((now, md) => { if (!done) { done = true; clearTimeout(to); res(md.mediaTime); } });
+      v.currentTime = t;
+    });
+    if (got !== null && Math.abs(got - t) <= tol) return got;
+  }
+  return null;
+};
+window.__job = async (o) => {
+  const v = window.__vid(); window.__clear();
+  const {crop = [0, 0, 1, 1], t0, t1, n = 12, cols = 6, cellW = 200, tol = 0.05} = o;
+  const cellH = Math.round(cellW * (v.videoHeight * crop[3]) / (v.videoWidth * crop[2])); const rowsN = Math.ceil(n / cols);
+  const c = document.createElement('canvas'); c.id = '__sheet'; c.width = cols * cellW; c.height = rowsN * cellH;
+  Object.assign(c.style, {position: 'fixed', left: '0', top: '0', zIndex: 2147483647, background: '#000', width: c.width + 'px', height: c.height + 'px'});
+  const g = c.getContext('2d'); g.fillStyle = '#000'; g.fillRect(0, 0, c.width, c.height); document.body.appendChild(c);
+  window.__jobState = {done: 0, n, got: [], fail: []};
+  for (let k = 0; k < n; k++) {
+    const t = t0 + (t1 - t0) * k / (n - 1); const m = await window.__frameAt(v, t, tol);
+    if (m === null) { window.__jobState.fail.push(+t.toFixed(3)); continue; }
+    const x = (k % cols) * cellW, y = Math.floor(k / cols) * cellH;
+    g.drawImage(v, v.videoWidth * crop[0], v.videoHeight * crop[1], v.videoWidth * crop[2], v.videoHeight * crop[3], x, y, cellW, cellH);
+    g.strokeStyle = '#333'; g.strokeRect(x + 0.5, y + 0.5, cellW - 1, cellH - 1); g.fillStyle = '#000'; g.fillRect(x, y, 40, 13); g.fillStyle = '#ff0'; g.font = '11px sans-serif'; g.fillText(m.toFixed(3), x + 2, y + 10);
+    window.__jobState.got.push(+m.toFixed(3)); window.__jobState.done = k + 1;
+  }
+  window.__jobState.finished = true;
+};
+window.__acorr = async (o) => {
+  const v = window.__vid(); const {crop, t0, t1, step, W = 48, H = 96} = o;
+  const c = document.createElement('canvas'); c.width = W; c.height = H; const g = c.getContext('2d', {willReadFrequently: true});
+  const fr = []; const ts = []; window.__acState = {n: 0, done: false};
+  for (let t = t0; t <= t1 + 1e-6; t += step) {
+    const m = await window.__frameAt(v, t, 0.03); if (m === null) continue;
+    g.drawImage(v, v.videoWidth * crop[0], v.videoHeight * crop[1], v.videoWidth * crop[2], v.videoHeight * crop[3], 0, 0, W, H);
+    const d = g.getImageData(0, 0, W, H).data; const a = new Float32Array(W * H); for (let i = 0; i < W * H; i++) a[i] = (d[4 * i] + d[4 * i + 1] + d[4 * i + 2]) / 3;
+    fr.push(a); ts.push(m); window.__acState.n = fr.length;
+  }
+  const N = fr.length; const res = [];
+  for (let lag = 4; lag <= Math.min(N - 8, 60); lag++) {
+    let s = 0, cnt = 0;
+    for (let i = 0; i + lag < N; i++) { let e = 0; const A = fr[i], B = fr[i + lag]; for (let k = 0; k < A.length; k++) e += Math.abs(A[k] - B[k]); s += e / A.length; cnt++; }
+    res.push([lag, +(s / cnt).toFixed(3)]);
+  }
+  window.__acState = {n: N, done: true, step, res, t0: ts[0], t1: ts[N - 1]};
+};

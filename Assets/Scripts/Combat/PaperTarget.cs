@@ -47,6 +47,10 @@ namespace ZeroProtocol.Combat
         public float MeanRadiusCm { get; private set; }
         public bool IsAlive => true;
         public int RecordedShotCount => Mathf.Min(ShotCount, hitCoordinates.Length);
+        /// <summary>Hole decals currently showing on the sheet (caps at maxHoles).</summary>
+        public int ActiveHoleDecalCount => activeHoleCount;
+        /// <summary>Pool slot the next bullet hole will use (ring buffer cursor).</summary>
+        public int NextHoleSlot => nextHoleSlot;
 
         public Vector2 GetHitCoordinate(int index)
         {
@@ -63,6 +67,7 @@ namespace ZeroProtocol.Combat
         readonly Vector2[] hitCoordinates = new Vector2[128];
         GameObject[] holeDecalPool;
         int activeHoleCount;
+        int nextHoleSlot;
         Transform decalRoot;
         Material sharedHoleMat;
 
@@ -164,15 +169,19 @@ namespace ZeroProtocol.Combat
 
         public void FreshPaper()
         {
-            // Recycle all active hole decals
-            for (int i = 0; i < activeHoleCount; i++)
+            // Clear every hole decal, not just the ones counted as active
+            if (holeDecalPool != null)
             {
-                if (holeDecalPool[i] != null)
+                for (int i = 0; i < holeDecalPool.Length; i++)
                 {
-                    holeDecalPool[i].SetActive(false);
+                    if (holeDecalPool[i] != null)
+                    {
+                        holeDecalPool[i].SetActive(false);
+                    }
                 }
             }
             activeHoleCount = 0;
+            nextHoleSlot = 0;
 
             ShotCount = 0;
             TotalScore = 0;
@@ -220,16 +229,10 @@ namespace ZeroProtocol.Combat
         {
             if (holeDecalPool == null || holeDecalPool.Length == 0) return;
 
-            int holeIndex;
-            if (activeHoleCount < holeDecalPool.Length)
-            {
-                holeIndex = activeHoleCount++;
-            }
-            else
-            {
-                // Recycle oldest
-                holeIndex = (activeHoleCount - 1) % holeDecalPool.Length;
-            }
+            // Ring buffer: slots are used in order, so once the sheet is full each new hole replaces the oldest one
+            int holeIndex = nextHoleSlot;
+            nextHoleSlot = (nextHoleSlot + 1) % holeDecalPool.Length;
+            activeHoleCount = Mathf.Min(activeHoleCount + 1, holeDecalPool.Length);
 
             GameObject hole = holeDecalPool[holeIndex];
             if (hole != null)

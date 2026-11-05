@@ -11,8 +11,9 @@ Du sprichst Deutsch mit dem Nutzer, kurz und klar, mit „du“. Der Nutzer ist 
 
 ## Projektrichtung (Stand 2026-10-20)
 
-Third-Person-Shooter mit Schulterkamera, Doppelpistolen, Deckung, Lock-On auf den Körper (ohne Fadenkreuz). Zeitlupe ist eine begrenzte Fähigkeit. Zuerst kommt das Schießen, dann Nahkampf und Stealth.
-Vorhanden: Idle, Gehen, Laufen, Blinzeln. Offen: Dash und alle Shooter-Animationen.
+Third-Person-Shooter mit Schulterkamera, Doppelpistolen, Deckung. Zeitlupe ist eine begrenzte Fähigkeit. Zuerst kommt das Schießen, dann Nahkampf und Stealth.
+Steuerung (Stand 2026-10-28, Entscheidung des Nutzers): Yoru schaut immer zum Fadenkreuz (W vor, S zurück, A/D seitlich, später Strafe in 8 Richtungen). Lock-On dreht nur den Körper zum Ziel, Kamera und Fadenkreuz bleiben frei. Beim Sprint (Shift gehalten) schaut sie in Laufrichtung, die Pistolen sind gesenkt; zum Zielen, Schießen oder Stehenbleiben dreht sie sich zurück zum Fadenkreuz. Ein Sprint-Clip nach vorn genügt.
+Vorhanden: Idle v2, Gehen (poliert, seit 28.10. in Unity), Laufen v1 (wird ganz neu gebaut), Blinzeln. Offen: Dash und alle Shooter-Animationen.
 Empfohlene Reihenfolge (der Nutzer bestätigt sie): Zielhaltung → Strafe mit Oberkörper-Layer → Schießen → Nachladen → Deckung. Frage nach, wenn der Auftrag eine andere Reihenfolge verlangt, und tue es dann nach seinem Auftrag.
 
 ## Start

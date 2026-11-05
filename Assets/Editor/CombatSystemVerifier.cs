@@ -485,6 +485,8 @@ namespace ZeroProtocol.EditorTools
 
             Assert(popper.IsAlive, "PopperTarget Elastic Pop-up Respawned After 2.5s");
             Assert(popper.CurrentHealth == 100f, "PopperTarget Restored to Full Health");
+            float popperTiltAfterRespawn = (float)popperTiltField.GetValue(popper);
+            Assert(popperTiltAfterRespawn > 80f, "PopperTarget Respawn Keeps The Fallen Angle (Spring Lifts It, No Snap)");
 
             // -----------------------------------------------------------
             // TEST 16: LockOnSystem Auto-Switch on Target Destruction
@@ -540,44 +542,248 @@ namespace ZeroProtocol.EditorTools
             Assert(lockSys.Current == null, "LockOnSystem Cleanly Released Lock When No Alive Targets Remain");
 
             // -----------------------------------------------------------
-            // TEST 17: YoruController Strafe Locomotion & Directional Combat Dodge
+            // TEST 17: Controls Rebuild (2026-10-28): she faces the crosshair, the lock-on frame, the sprint turn, Alt free look, the dodge
             // -----------------------------------------------------------
-            yoruGo = new GameObject("_TestYoru");
-            yoruGo.transform.position = new Vector3(500f, 0f, 0f);
-            var yoruCc = yoruGo.AddComponent<CharacterController>();
-            var yoruIn = yoruGo.AddComponent<GameInput>();
-            inputAwake.Invoke(yoruIn, null);
-            var yoruLock = yoruGo.AddComponent<LockOnSystem>();
-            var yoruCtrl = yoruGo.AddComponent<YoruController>();
-            yoruCtrl.cameraTransform = lockCamGo.transform;
-            yoruCtrl.lockOn = yoruLock;
-            var yoruAwake = typeof(YoruController).GetMethod("Awake", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            yoruAwake?.Invoke(yoruCtrl, null);
-
             yoruTargetGo = GameObject.CreatePrimitive(PrimitiveType.Capsule);
             yoruTargetGo.transform.position = new Vector3(500f, 0f, 10f);
             var yoruLockTarget = yoruTargetGo.AddComponent<LockOnTarget>();
             if (!LockOnTarget.All.Contains(yoruLockTarget)) lockTargetOnEnable?.Invoke(yoruLockTarget, null);
-            yoruLock.SetTarget(yoruLockTarget);
             Physics.SyncTransforms();
 
-            yoruIn.MoveOverride = new Vector2(0f, -1f);
-            inputUpdate.Invoke(yoruIn, null);
-            var yoruUpdate = typeof(YoruController).GetMethod("Update", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            yoruUpdate.Invoke(yoruCtrl, null);
+            // a fresh Yoru for every scenario (no leftover speed, dash cooldown or lock); the camera rig of TEST 16 stands in for the game camera
+            YoruController NewYoru(out GameInput gi, out LockOnSystem lk)
+            {
+                if (yoruGo != null) UnityEngine.Object.DestroyImmediate(yoruGo);
+                yoruGo = new GameObject("_TestYoru");
+                yoruGo.transform.position = new Vector3(500f, 0f, 0f);
+                yoruGo.AddComponent<CharacterController>();
+                gi = yoruGo.AddComponent<GameInput>();
+                inputAwake.Invoke(gi, null);
+                lk = yoruGo.AddComponent<LockOnSystem>();
+                var ctrl = yoruGo.AddComponent<YoruController>();
+                ctrl.cameraTransform = lockCamGo.transform;
+                ctrl.lockOn = lk;
+                ctrl.EnsureComponents();
+                Physics.SyncTransforms();
+                return ctrl;
+            }
+            // frames at a fixed 0.02 s: the game input is read first, then the controller steps (the same order as in the game)
+            void StepYoru(YoruController ctrl, GameInput gi, int frames)
+            {
+                for (int i = 0; i < frames; i++)
+                {
+                    inputUpdate.Invoke(gi, null);
+                    ctrl.Tick(0.02f);
+                }
+            }
+            void SetCamera(float yawDegrees)
+            {
+                lockRig.SetOrbit(yawDegrees, 15f);
+                lockCamGo.transform.rotation = Quaternion.Euler(0f, yawDegrees, 0f);
+            }
+            Vector3 Flat(Vector3 v) { v.y = 0f; return v; }
+            float FaceDot(Vector3 direction) { return Vector3.Dot(yoruGo.transform.forward, Flat(direction).normalized); }
+            Vector3 ToTarget() { return Flat(yoruTargetGo.transform.position - yoruGo.transform.position); }
 
-            Assert(Vector3.Dot(yoruGo.transform.forward, Vector3.forward) > 0.8f, "Yoru Controller Faces Target in Strafe Locomotion");
+            // --- A: normal play. She always faces the crosshair (the camera yaw); S backs up while she keeps facing forward; A and D side-step relative to the camera.
+            SetCamera(90f);                                                  // the camera looks along +X, she starts facing +Z
+            var yoruCtrl = NewYoru(out var yoruIn, out var yoruLock);
+            Vector3 legStart = yoruGo.transform.position;
+            yoruIn.MoveOverride = new Vector2(0f, -1f);                      // S
+            StepYoru(yoruCtrl, yoruIn, 40);
+            Vector3 moved = Flat(yoruGo.transform.position - legStart);
+            Assert(yoruCtrl.Facing == FacingMode.Aim && !yoruCtrl.IsLockedOn, "Normal Play Faces The Crosshair (Facing = Aim)");
+            Assert(FaceDot(Vector3.right) > 0.98f, "Pressing S She Turns To The Camera Yaw, So Facing And Bullet Direction Agree");
+            Assert(moved.magnitude > 0.8f && Vector3.Dot(moved.normalized, Vector3.left) > 0.99f, "S Backs Up Relative To The Camera (Away From Where She Faces)");
+            Assert(yoruCtrl.LocalMove.y < -1.0f && Mathf.Abs(yoruCtrl.LocalMove.x) < 0.1f && yoruCtrl.MoveY < -0.6f, "Backing Up Shows As Negative Local Forward Speed (MoveY)");
+            Assert(yoruCtrl.LocoMultiplier < -0.9f, "Backing Up Plays The Walk In Reverse (Negative LocoMult Stopgap)");
+            legStart = yoruGo.transform.position;
+            yoruIn.MoveOverride = new Vector2(-1f, 0f);                      // A: left of the crosshair = +Z for a camera that looks along +X
+            StepYoru(yoruCtrl, yoruIn, 40);
+            moved = Flat(yoruGo.transform.position - legStart);
+            Assert(moved.magnitude > 0.8f && Vector3.Dot(moved.normalized, Vector3.forward) > 0.99f, "A Side-Steps Relative To The Camera (Not World Left)");
+            Assert(FaceDot(Vector3.right) > 0.98f && yoruCtrl.MoveX < -0.6f, "Side-Stepping She Keeps Facing The Crosshair (MoveX Is Negative)");
+            Assert(yoruCtrl.LocoMultiplier > 0.9f, "Side-Stepping Plays The Walk Forward (No Reverse)");
+            yoruIn.MoveOverride = Vector2.zero;
+            SetCamera(180f);                                                 // the player turns the camera: she follows even while standing still
+            StepYoru(yoruCtrl, yoruIn, 30);
+            Assert(FaceDot(Vector3.back) > 0.98f && yoruCtrl.Facing == FacingMode.Aim, "Standing Still She Still Follows The Crosshair");
+            Assert(yoruCtrl.LocoMultiplier > 0.9f, "Standing Still The Playback Returns To Forward");
 
+            // the turn is fast but smooth: a 180 degree swing is capped by turnSpeed, eased out, and done in well under half a second
+            SetCamera(0f);
+            float turnAngle = Vector3.Angle(yoruGo.transform.forward, Vector3.forward), lastAngle = turnAngle, biggestStep = 0f;
+            int turnFrames = 0;
+            while (turnFrames < 40 && Vector3.Angle(yoruGo.transform.forward, Vector3.forward) > 5f)
+            {
+                StepYoru(yoruCtrl, yoruIn, 1);
+                turnFrames++;
+                float angle = Vector3.Angle(yoruGo.transform.forward, Vector3.forward);
+                biggestStep = Mathf.Max(biggestStep, Mathf.Abs(angle - lastAngle));
+                lastAngle = angle;
+            }
+            Assert(turnAngle > 170f && turnFrames >= 6 && turnFrames <= 20, "A 180 Degree Turn Is Fast (< 0.4 s) But Not A Snap", $"frames {turnFrames}");
+            Assert(biggestStep <= yoruCtrl.turnSpeed * 0.02f + 0.5f, "The Turn Never Exceeds turnSpeed", $"biggest step {biggestStep}");
+
+            // --- B: lock-on. Only her body faces the target; W/A/S/D are relative to the target, not to the camera
+            //        (the camera still looks along +X, the target stands along +Z).
+            SetCamera(90f);
+            yoruCtrl = NewYoru(out yoruIn, out yoruLock);
+            yoruLock.SetTarget(yoruLockTarget);
+            Vector3[] lockLegs = { Vector3.forward, Vector3.back, Vector3.right, Vector3.left };      // W, S, D, A relative to a target along +Z
+            Vector2[] lockKeys = { new Vector2(0f, 1f), new Vector2(0f, -1f), new Vector2(1f, 0f), new Vector2(-1f, 0f) };
+            string[] lockNames = { "W Moves Toward The Target", "S Moves Away From The Target", "D Circles To The Right Of The Target", "A Circles To The Left Of The Target" };
+            for (int leg = 0; leg < lockLegs.Length; leg++)
+            {
+                legStart = yoruGo.transform.position;
+                yoruIn.MoveOverride = lockKeys[leg];
+                StepYoru(yoruCtrl, yoruIn, 40);
+                moved = Flat(yoruGo.transform.position - legStart);
+                Assert(moved.magnitude > 0.8f && Vector3.Dot(moved.normalized, lockLegs[leg]) > 0.97f, lockNames[leg] + " (Camera Free, Not Camera Relative)");
+                Assert(yoruCtrl.IsLockedOn && yoruCtrl.Facing == FacingMode.LockOn && FaceDot(ToTarget()) > 0.98f, "She Keeps Facing The Target " + (leg == 0 ? "Walking Toward It" : leg == 1 ? "Backing Away" : "While Circling"));
+            }
+            Assert(yoruCtrl.MoveX < -0.6f && Mathf.Abs(yoruCtrl.MoveY) < 0.3f, "Circling Shows As Sideways Local Speed (MoveX)");
+            Assert(yoruCtrl.LocoMultiplier > 0.9f, "Circling Plays The Walk Forward");
+
+            // sprinting while locked on: she faces the way she runs, and turns back to the target when she stops
+            yoruIn.SprintOverride = true;
+            yoruIn.MoveOverride = new Vector2(-1f, 0f);                      // A in the target frame = -X
+            StepYoru(yoruCtrl, yoruIn, 40);
+            Assert(yoruCtrl.IsSprinting && yoruCtrl.Facing == FacingMode.Sprint && FaceDot(Vector3.left) > 0.95f, "Sprinting While Locked On She Faces The Way She Runs, Not The Target");
+            Assert(yoruCtrl.HorizontalSpeed > 4.5f && yoruCtrl.LocoMultiplier > 0.9f, "The Sprint Always Plays Forward At Full Speed");
+            yoruIn.MoveOverride = Vector2.zero;
+            StepYoru(yoruCtrl, yoruIn, 30);
+            Assert(!yoruCtrl.IsSprinting && yoruCtrl.Facing == FacingMode.LockOn && FaceDot(ToTarget()) > 0.98f, "Stopping Ends The Sprint And She Turns Back To The Target");
+            yoruIn.SprintOverride = false;
+            yoruLock.Release();
+            StepYoru(yoruCtrl, yoruIn, 30);
+            Assert(!yoruCtrl.IsLockedOn && yoruCtrl.Facing == FacingMode.Aim && FaceDot(Vector3.right) > 0.98f, "After The Release She Faces The Crosshair Again");
+
+            // --- C: sprint (no lock). She faces the way she runs; aiming, firing and stopping end it and she turns back to the crosshair.
+            SetCamera(0f);
+            yoruCtrl = NewYoru(out yoruIn, out yoruLock);
+            yoruIn.SprintOverride = true;                                    // Shift held (a hold, so no dodge first)
+            yoruIn.MoveOverride = new Vector2(1f, 0f);                       // D
+            StepYoru(yoruCtrl, yoruIn, 30);
+            Assert(yoruCtrl.IsSprinting && yoruCtrl.Facing == FacingMode.Sprint, "Holding Shift While Moving Starts The Sprint");
+            Assert(FaceDot(Vector3.right) > 0.95f && yoruCtrl.HorizontalSpeed > 4.5f, "Sprinting She Faces The Way She Runs (Right Of The Camera)");
+            Assert(Mathf.Abs(yoruCtrl.LocalMove.x) < 0.5f && yoruCtrl.MoveY > 2.5f, "The Sprint Is Forward Motion In Her Own Frame (MoveY = Run Speed / Walk Speed)");
+            yoruIn.AimHeldOverride = true;                                   // right mouse button
+            StepYoru(yoruCtrl, yoruIn, 25);
+            Assert(!yoruCtrl.IsSprinting && yoruCtrl.Facing == FacingMode.Aim && FaceDot(Vector3.forward) > 0.95f, "Aiming Ends The Sprint And She Turns Back To The Crosshair");
+            Assert(yoruCtrl.HorizontalSpeed < 1.7f && yoruCtrl.MoveX > 0.6f, "While Aiming She Walks (Side-Steps) At Walking Speed");
+            yoruIn.AimHeldOverride = false;
+            StepYoru(yoruCtrl, yoruIn, 25);
+            Assert(yoruCtrl.IsSprinting && yoruCtrl.Facing == FacingMode.Sprint, "Shift Still Held: The Sprint Resumes When The Aim Is Let Go");
+            yoruIn.FireHeldOverride = true;                                  // left mouse button
+            StepYoru(yoruCtrl, yoruIn, 25);
+            Assert(!yoruCtrl.IsSprinting && yoruCtrl.Facing == FacingMode.Aim && FaceDot(Vector3.forward) > 0.95f, "Firing Ends The Sprint And She Turns Back To The Crosshair");
+            yoruIn.FireHeldOverride = false;
+            StepYoru(yoruCtrl, yoruIn, 2);
+            Assert(!yoruCtrl.IsSprinting, "Right After The Last Shot She Is Still Out Of The Sprint (No Flicker Between Shots)");
+            StepYoru(yoruCtrl, yoruIn, 25);
+            Assert(yoruCtrl.IsSprinting, "A Moment After The Last Shot The Sprint Resumes While Shift Is Held");
+            yoruIn.MoveOverride = Vector2.zero;                              // she stops, Shift still held
+            StepYoru(yoruCtrl, yoruIn, 30);
+            Assert(!yoruCtrl.IsSprinting && yoruCtrl.Facing == FacingMode.Aim && FaceDot(Vector3.forward) > 0.98f, "Stopping Ends The Sprint And She Turns Back To The Crosshair");
+            yoruIn.MoveOverride = new Vector2(0f, -1f);                      // sprinting backwards: she turns around and runs facing the way she goes
+            StepYoru(yoruCtrl, yoruIn, 40);
+            Assert(yoruCtrl.IsSprinting && FaceDot(Vector3.back) > 0.95f && yoruCtrl.LocoMultiplier > 0.9f, "Sprinting Backwards She Turns Around And Runs Forward (No Reverse Clip)");
+            yoruIn.SprintOverride = false;
+            yoruIn.MoveOverride = Vector2.zero;
+
+            // --- D: Alt free look. The camera orbits while she keeps the facing and the move reference from before; on release the camera swings back.
+            SetCamera(0f);
+            yoruCtrl = NewYoru(out yoruIn, out yoruLock);
+            lockRig.input = yoruIn;
+            yoruIn.FreeLookOverride = true;                                  // Alt down
+            StepYoru(yoruCtrl, yoruIn, 1);
+            lockRig.UpdateFreeLook(0.02f);
+            Assert(lockRig.FreeLookActive && Mathf.Abs(Mathf.DeltaAngle(lockRig.AimYaw, 0f)) < 0.01f, "Alt Starts Free Look And Freezes The Aim Heading");
+            SetCamera(90f);                                                  // the camera orbits to the right while Alt is held
+            Assert(Mathf.Abs(Mathf.DeltaAngle(lockRig.AimYaw, 0f)) < 0.01f, "During Free Look The Aim Heading Stays Frozen While The Camera Yaw Moves On");
+            legStart = yoruGo.transform.position;
+            yoruIn.MoveOverride = new Vector2(0f, 1f);                       // W
+            StepYoru(yoruCtrl, yoruIn, 40);
+            moved = Flat(yoruGo.transform.position - legStart);
+            Assert(FaceDot(Vector3.forward) > 0.98f && yoruCtrl.Facing == FacingMode.Aim, "While Alt Is Held She Does Not Turn With The Camera");
+            Assert(moved.magnitude > 0.8f && Vector3.Dot(moved.normalized, Vector3.forward) > 0.99f, "While Alt Is Held W Keeps Going The Way She Faced Before");
+            yoruIn.FreeLookOverride = false;                                 // Alt released: the camera swings back, she keeps the heading all the while
+            float lowestFacing = 1f;
+            int swingFrames = 0;
+            while (swingFrames < 200)
+            {
+                swingFrames++;
+                StepYoru(yoruCtrl, yoruIn, 1);
+                lockRig.UpdateFreeLook(0.02f);
+                lockCamGo.transform.rotation = Quaternion.Euler(0f, lockRig.Yaw, 0f);
+                if (!lockRig.FreeLookActive) break;
+                lowestFacing = Mathf.Min(lowestFacing, FaceDot(Vector3.forward));
+            }
+            Assert(!lockRig.FreeLookActive && Mathf.Abs(Mathf.DeltaAngle(lockRig.Yaw, 0f)) < 1.5f, "After Alt The Camera Swings Back To Where It Was", $"yaw {lockRig.Yaw}, frames {swingFrames}");
+            Assert(lowestFacing > 0.98f, "During The Swing Back She Keeps The Heading From Before", $"lowest facing {lowestFacing}");
+            yoruIn.MoveOverride = Vector2.zero;
+            SetCamera(90f);                                                  // Alt is over: she follows the crosshair again
+            StepYoru(yoruCtrl, yoruIn, 30);
+            Assert(FaceDot(Vector3.right) > 0.98f && !lockRig.FreeLookActive, "After Free Look She Follows The Crosshair Again");
+            lockRig.input = null;
+
+            // --- E: dodge. The direction comes from the input in the same reference as the walk; she may turn toward it, then returns to the facing rule.
+            SetCamera(90f);
+            yoruCtrl = NewYoru(out yoruIn, out yoruLock);
+            var dashDirField = typeof(YoruController).GetField("dashDirection", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            yoruIn.MoveOverride = new Vector2(-1f, 0f);                      // A: camera-left = +Z
+            yoruIn.DashOverride = true;                                      // Shift tap
+            StepYoru(yoruCtrl, yoruIn, 1);
+            Vector3 dashDir = (Vector3)dashDirField.GetValue(yoruCtrl);
+            Assert(yoruCtrl.IsDashing, "Yoru Controller Successfully Initiated Combat Dash");
+            Assert(Vector3.Dot(dashDir, Vector3.forward) > 0.99f, "Dodge Direction Follows The Input Relative To The Camera (A = Camera Left)");
+            StepYoru(yoruCtrl, yoruIn, 4);
+            Assert(yoruCtrl.IsDashing && yoruCtrl.Facing == FacingMode.Dodge && FaceDot(Vector3.forward) > 0.5f, "During The Dodge She Turns Toward The Dash (No Dodge Clips Yet)");
+            yoruIn.MoveOverride = Vector2.zero;
+            StepYoru(yoruCtrl, yoruIn, 40);
+            Assert(!yoruCtrl.IsDashing && yoruCtrl.Facing == FacingMode.Aim && FaceDot(Vector3.right) > 0.98f, "After The Dodge She Returns To Facing The Crosshair");
+            yoruCtrl = NewYoru(out yoruIn, out yoruLock);                    // no input: the dodge goes straight ahead in the reference frame
+            yoruIn.DashOverride = true;
+            StepYoru(yoruCtrl, yoruIn, 1);
+            dashDir = (Vector3)dashDirField.GetValue(yoruCtrl);
+            Assert(Vector3.Dot(dashDir, Vector3.right) > 0.99f, "A Dodge Without Input Goes Toward The Crosshair");
+
+            yoruCtrl = NewYoru(out yoruIn, out yoruLock);                    // locked on: the reference is the target (A = -X), not the camera (A would be +Z)
+            yoruLock.SetTarget(yoruLockTarget);
             yoruIn.MoveOverride = new Vector2(-1f, 0f);
             yoruIn.DashOverride = true;
-            inputUpdate.Invoke(yoruIn, null);
-            yoruUpdate.Invoke(yoruCtrl, null);
+            StepYoru(yoruCtrl, yoruIn, 1);
+            dashDir = (Vector3)dashDirField.GetValue(yoruCtrl);
+            Assert(yoruCtrl.IsDashing && Vector3.Dot(dashDir, Vector3.left) > 0.99f, "Locked On The Dodge Direction Is Relative To The Target (A = Left Of The Target)");
+            yoruIn.MoveOverride = Vector2.zero;
+            StepYoru(yoruCtrl, yoruIn, 40);
+            Assert(!yoruCtrl.IsDashing && yoruCtrl.Facing == FacingMode.LockOn && FaceDot(ToTarget()) > 0.98f, "After A Locked-On Dodge She Faces The Target Again");
+            yoruCtrl = NewYoru(out yoruIn, out yoruLock);
+            yoruLock.SetTarget(yoruLockTarget);
+            yoruIn.DashOverride = true;
+            StepYoru(yoruCtrl, yoruIn, 1);
+            dashDir = (Vector3)dashDirField.GetValue(yoruCtrl);
+            Assert(Vector3.Dot(dashDir, Vector3.forward) > 0.99f, "Locked On A Dodge Without Input Goes Toward The Target");
+            yoruCtrl = NewYoru(out yoruIn, out yoruLock);                    // the option for the day the dodge clips exist: keep facing the target during the dodge
+            yoruCtrl.dodgeFacesTravel = false;
+            yoruLock.SetTarget(yoruLockTarget);
+            yoruIn.MoveOverride = new Vector2(1f, 0f);
+            yoruIn.DashOverride = true;
+            StepYoru(yoruCtrl, yoruIn, 6);
+            Assert(yoruCtrl.IsDashing && yoruCtrl.Facing == FacingMode.LockOn && FaceDot(ToTarget()) > 0.98f, "With dodgeFacesTravel Off She Keeps Facing The Target During The Dodge");
+            yoruIn.MoveOverride = Vector2.zero;
 
-            Assert(yoruCtrl.IsDashing, "Yoru Controller Successfully Initiated Combat Dash");
-            var dashDirField = typeof(YoruController).GetField("dashDirection", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            Vector3 dDir = (Vector3)dashDirField.GetValue(yoruCtrl);
-            Assert(Vector3.Dot(dDir, Vector3.left) > 0.8f, "Directional Combat Dodge Vector Directed to Pressed Input (Left)");
-            Assert(Vector3.Dot(yoruGo.transform.forward, Vector3.forward) > 0.8f, "Yoru Controller Continues Facing Target During Directional Dodge");
+            // --- Source guards for the two rules a play-test would notice at once
+            string Code(string path) { return Regex.Replace(File.ReadAllText(path), @"//[^\r\n]*|/\*.*?\*/", "", RegexOptions.Singleline); }
+            Assert(!Regex.IsMatch(Code("Assets/Scripts/Camera/ThirdPersonCamera.cs"), @"\blockTarget\b") && !Regex.IsMatch(Code("Assets/Scripts/Camera/LockOnSystem.cs"), @"\blockTarget\b"),
+                "Lock-On Never Steers The Camera (The Rig Has No lockTarget Any More)");
+            string uiCode = Code("Assets/Scripts/Combat/CombatUI.cs");
+            int uiStart = uiCode.IndexOf("void OnGUI()", StringComparison.Ordinal);
+            int uiEnd = uiCode.IndexOf("void DrawHitmarker(", StringComparison.Ordinal);
+            string crosshairCode = uiStart >= 0 && uiEnd > uiStart ? uiCode.Substring(uiStart, uiEnd - uiStart) : "";
+            Assert(crosshairCode.Contains("DrawCrosshair(cx, cy);") && !Regex.IsMatch(crosshairCode, @"\b(lockOn|currentLockTarget|IsLockedOn|isLocked)\b"),
+                "The Crosshair Is Drawn While Locked On (No Lock Condition Around It)");
 
             // -----------------------------------------------------------
             // TEST 18: AmmoCrate Resupply System
@@ -601,20 +807,21 @@ namespace ZeroProtocol.EditorTools
             // -----------------------------------------------------------
             trolleyGo = new GameObject("_TestTrolley");
             var trolley = trolleyGo.AddComponent<TargetTrolley>();
-            trolley.boothOriginZ = -1.0f;
+            trolley.boothOriginZ = TargetTrolley.FiringLineZ;
             trolley.transform.position = new Vector3(0f, 3.4f, TargetTrolley.Z10M);
 
+            Assert(Mathf.Approximately(TargetTrolley.FiringLineZ, -2.5f), "Firing Line Sits At The Shooter Standing Z (-2.5m)");
             Assert(Mathf.Approximately(trolley.CurrentDistance, 10.0f), "Trolley Initial Distance Equals 10m");
-            Assert(Mathf.Approximately(TargetTrolley.ZRecall, -0.2f), "Trolley Recall Z Equals -0.2m (0.8m stop)");
-            Assert(Mathf.Approximately(TargetTrolley.Z5M, 4.0f), "Trolley 5m Stop Z Equals 4.0m");
-            Assert(Mathf.Approximately(TargetTrolley.Z10M, 9.0f), "Trolley 10m Stop Z Equals 9.0m");
-            Assert(Mathf.Approximately(TargetTrolley.Z15M, 14.0f), "Trolley 15m Stop Z Equals 14.0m");
-            Assert(Mathf.Approximately(TargetTrolley.Z25M, 24.0f), "Trolley 25m Stop Z Equals 24.0m");
+            Assert(Mathf.Approximately(TargetTrolley.ZRecall, -1.7f), "Trolley Recall Z Equals -1.7m (0.8m from the firing line)");
+            Assert(Mathf.Approximately(TargetTrolley.Z5M, 2.5f), "Trolley 5m Stop Z Equals 2.5m");
+            Assert(Mathf.Approximately(TargetTrolley.Z10M, 7.5f), "Trolley 10m Stop Z Equals 7.5m");
+            Assert(Mathf.Approximately(TargetTrolley.Z15M, 12.5f), "Trolley 15m Stop Z Equals 12.5m");
+            Assert(Mathf.Approximately(TargetTrolley.Z25M, 22.5f), "Trolley 25m Stop Z Equals 22.5m");
 
             trolley.MoveToDistance(15.0f);
             Assert(trolley.IsMoving, "Trolley In Transit After MoveToDistance(15m)");
             Assert(Mathf.Approximately(trolley.TargetDistance, 15.0f), "Trolley Target Distance Set to 15m");
-            Assert(Mathf.Approximately(trolley.TargetZ, 14.0f), "Trolley Target Z Set to 14.0m");
+            Assert(Mathf.Approximately(trolley.TargetZ, 12.5f), "Trolley Target Z Set to 12.5m");
 
             var trolleyUpdate = typeof(TargetTrolley).GetMethod("Update", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
             for (int step = 0; step < 250; step++)
@@ -628,7 +835,7 @@ namespace ZeroProtocol.EditorTools
 
             trolley.Recall();
             Assert(Mathf.Approximately(trolley.TargetDistance, 0.8f), "Trolley Recall Target Distance Equals 0.8m");
-            Assert(Mathf.Approximately(trolley.TargetZ, -0.2f), "Trolley Recall Target Z Equals -0.2m");
+            Assert(Mathf.Approximately(trolley.TargetZ, -1.7f), "Trolley Recall Target Z Equals -1.7m");
 
             // -----------------------------------------------------------
             // TEST 20: Paper Target Radial Scoring Zones
@@ -693,6 +900,16 @@ namespace ZeroProtocol.EditorTools
             Assert(paperTarget.ShotCount == 0, "FreshPaper Cleared Shot Count");
             Assert(paperTarget.TotalScore == 0, "FreshPaper Cleared Total Score");
             Assert(paperTarget.ExtremeSpreadCm == 0f, "FreshPaper Reset Extreme Spread to 0.0 cm");
+
+            // Bullet hole decals recycle through the pool: once the sheet is full, the next hole replaces the oldest one
+            for (int shot = 0; shot < paperTarget.maxHoles + 6; shot++)
+            {
+                paperTarget.TakeDamage(new DamageInfo(0f, paperGo.transform.position + new Vector3(0.01f * (shot % 5), 0f, 0f), Vector3.back, Vector3.forward, HitType.Body, HandSide.Left));
+            }
+            Assert(paperTarget.ActiveHoleDecalCount == paperTarget.maxHoles, "Paper Hole Decals Cap At The Pool Size");
+            Assert(paperTarget.NextHoleSlot == 6, "Paper Hole Decals Ring Buffer Wraps To The Oldest Slot");
+            paperTarget.FreshPaper();
+            Assert(paperTarget.ActiveHoleDecalCount == 0, "FreshPaper Clears Every Hole Decal");
 
             // -----------------------------------------------------------
             // TEST 22: Proximity Cyber-Terminal & Instantaneous Steel Reset
@@ -783,6 +1000,12 @@ namespace ZeroProtocol.EditorTools
             shellPool.RecycleAll();
             Assert(shellPool.ActiveCasingCount == 0, "RecycleAll Restored Active Count to 0");
             Assert(shellPool.AvailableCount == shellPool.poolSize, "RecycleAll Restored All Casings to Available Pool");
+
+            // Casings are 9mm cartridges on the Ignore Raycast layer, and they leave the gun at physical speed (m/s)
+            var casingSample = shellPoolGo.transform.Find("_ShellCasing_PoolRoot/Casing_0");
+            Assert(casingSample != null && casingSample.localScale.y * 2f < 0.02f, "Shell Casing Length Matches A 9mm Cartridge (< 2cm)");
+            Assert(casingSample != null && casingSample.gameObject.layer == ShellCasingPool.CasingLayer, "Shell Casings Sit On The Ignore Raycast Layer");
+            Assert(shellPool.leftEjectionImpulse.magnitude < 6f && shellPool.rightEjectionImpulse.magnitude < 6f, "Shell Ejection Velocity Is Physical (< 6 m/s)");
             }
             finally
             {

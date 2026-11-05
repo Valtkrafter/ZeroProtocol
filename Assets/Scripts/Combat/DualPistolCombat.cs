@@ -98,13 +98,17 @@ namespace ZeroProtocol.Combat
 
         HandSide nextHand = HandSide.Left;
         float nextFireTime;
+        float fireBufferUntil;
         float reloadTimer;
         float shotHeat;
         YoruController playerController;
 
+        // Unity's built-in "Ignore Raycast" layer: spent shell casings live here and must never absorb a bullet
+        const int IgnoreRaycastLayer = ShellCasingPool.CasingLayer;
+
         // Pre-allocated collision query buffers for Zero GC
-        readonly RaycastHit[] camHits = new RaycastHit[16];
-        readonly RaycastHit[] muzzleHits = new RaycastHit[16];
+        readonly RaycastHit[] camHits = new RaycastHit[32];
+        readonly RaycastHit[] muzzleHits = new RaycastHit[32];
         readonly RaycastHit[] losHits = new RaycastHit[8];
 
         void Awake()
@@ -169,13 +173,14 @@ namespace ZeroProtocol.Combat
             CurrentBloomAngle = Mathf.Clamp(rawSpread, thetaMin, thetaMax) * (IsAiming ? mAds : 1f);
             OnBloomChanged?.Invoke(CurrentBloomAngle);
 
-            // Handle Firing Input
-            if (input != null && (input.FireHeld || input.FirePressed))
+            // Handle Firing Input. A click that lands during the cadence gap stays armed for one cadence period,
+            // so a quick tap is never swallowed. Holding fire keeps the cadence going.
+            if (input != null && input.FirePressed) fireBufferUntil = Time.time + fireInterval;
+            bool wantsShot = input != null && (input.FireHeld || Time.time < fireBufferUntil);
+            if (wantsShot && !IsReloading && (Time.time >= nextFireTime || !Application.isPlaying))
             {
-                if (!IsReloading && (Time.time >= nextFireTime || !Application.isPlaying))
-                {
-                    TryFireNextShot();
-                }
+                fireBufferUntil = 0f;
+                TryFireNextShot();
             }
         }
 
@@ -233,36 +238,13 @@ namespace ZeroProtocol.Combat
             // 1. Center-screen camera ray determines aim point P_aim
             Vector3 pAim = GetCenterCameraAimPoint(muzzlePos);
 
-            // 2. Line of sight from muzzle to aim point & Parallax handling
+            // 2. Convergence: muzzle -> aim point. Parallax check: if the aim point is behind or level with the muzzle,
+            //    fall back to camera forward. Occlusion is decided by the hitscan below, the only query that picks the hit.
             Vector3 toAim = pAim - muzzlePos;
-            float aimDist = toAim.magnitude;
             Vector3 camForward = (mainCamera != null) ? mainCamera.transform.forward : transform.forward;
-
-            // Parallax check: if aim point is behind or planar to muzzle, fall back to camera forward
-            Vector3 aimDir;
-            if (aimDist <= 0.001f || Vector3.Dot(toAim, camForward) <= 0.05f)
-            {
-                aimDir = camForward;
-                aimDist = maxRange;
-            }
-            else
-            {
-                aimDir = toAim / aimDist;
-            }
-
-            // Line-of-sight verification from active muzzle socket P_muzzle to P_aim via Physics.RaycastNonAlloc
-            int losCheckCount = Physics.RaycastNonAlloc(muzzlePos, aimDir, losHits, aimDist, hitLayers, QueryTriggerInteraction.Ignore);
-            for (int i = 0; i < losCheckCount; i++)
-            {
-                RaycastHit lh = losHits[i];
-                if (lh.collider == null || lh.transform.IsChildOf(transform)) continue;
-                if (lh.distance < aimDist - 0.05f)
-                {
-                    // Intervening obstruction verified: trajectory is truncated to obstacle
-                    aimDist = lh.distance;
-                    break;
-                }
-            }
+            Vector3 aimDir = (toAim.sqrMagnitude <= 0.000001f || Vector3.Dot(toAim, camForward) <= 0.05f)
+                ? camForward
+                : toAim.normalized;
 
             // 3. Aim Assist Tier 2: Bullet Magnetism Cone Solver (with line of sight check)
             Vector3 magnetizedDir = ApplyBulletMagnetism(muzzlePos, aimDir);
@@ -281,8 +263,8 @@ namespace ZeroProtocol.Combat
             {
                 RaycastHit hit = muzzleHits[i];
                 if (hit.collider == null) continue;
-                // Exclude self/player colliders
-                if (hit.transform.IsChildOf(transform)) continue;
+                // Exclude self/player colliders and spent shell casings
+                if (hit.transform.IsChildOf(transform) || hit.collider.gameObject.layer == IgnoreRaycastLayer) continue;
 
                 if (hit.distance < closestDist)
                 {
@@ -365,7 +347,7 @@ namespace ZeroProtocol.Combat
             {
                 RaycastHit h = camHits[i];
                 if (h.collider == null) continue;
-                if (h.transform.IsChildOf(transform)) continue;
+                if (h.transform.IsChildOf(transform) || h.collider.gameObject.layer == IgnoreRaycastLayer) continue;
 
                 if (h.distance < nearest)
                 {
@@ -388,7 +370,7 @@ namespace ZeroProtocol.Combat
             for (int i = 0; i < count; i++)
             {
                 RaycastHit h = losHits[i];
-                if (h.collider == null || h.transform.IsChildOf(transform)) continue;
+                if (h.collider == null || h.transform.IsChildOf(transform) || h.collider.gameObject.layer == IgnoreRaycastLayer) continue;
                 if (targetTransform != null && (h.transform == targetTransform || h.transform.IsChildOf(targetTransform))) continue;
                 if (h.distance < dist - 0.05f)
                 {

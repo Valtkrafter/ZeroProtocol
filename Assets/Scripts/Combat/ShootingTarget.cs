@@ -4,27 +4,6 @@ using UnityEngine;
 namespace ZeroProtocol.Combat
 {
     /// <summary>
-    /// Hitbox proxy component placed on child colliders (Head, Body) to route damage
-    /// and report distinct hit types to the parent ShootingTarget.
-    /// </summary>
-    public class TargetHitbox : MonoBehaviour, IDamageable
-    {
-        public ShootingTarget parentTarget;
-        public HitType hitboxType = HitType.Body;
-
-        public bool IsAlive => parentTarget != null && parentTarget.IsAlive;
-
-        public void TakeDamage(DamageInfo info)
-        {
-            if (parentTarget != null)
-            {
-                info.hitType = hitboxType;
-                parentTarget.TakeDamage(info);
-            }
-        }
-    }
-
-    /// <summary>
     /// Reactive combat target dummy with underdamped harmonic oscillator tilt physics,
     /// MaterialPropertyBlock hit flashes (zero GC allocations), and automatic respawn.
     /// </summary>
@@ -221,9 +200,9 @@ namespace ZeroProtocol.Combat
             IsAlive = true;
             CurrentHealth = maxHealth;
             deathTimer = 0f;
-            currentTilt = 0f;
-            tiltVelocity = 12f; // Pop-up spring wobble
-            tiltAxis = Vector3.right;
+            // Keep the fallen angle and the axis it fell on: the spring lifts the dummy back upright with a
+            // natural overshoot. Resetting the tilt here made the dummy teleport upright.
+            tiltVelocity = 0f;
             flashTimer = 0.3f;
             currentFlashColor = ColorHeadshot;
         }

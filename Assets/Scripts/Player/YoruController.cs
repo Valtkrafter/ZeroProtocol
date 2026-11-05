@@ -3,14 +3,37 @@ using UnityEngine;
 
 namespace ZeroProtocol.Player
 {
+    /// <summary>How her body is turned right now (YoruController.Facing). The later Animator reads it to pick the pose.</summary>
+    public enum FacingMode
+    {
+        /// <summary>Faces the crosshair heading (the camera yaw). The normal state.</summary>
+        Aim,
+        /// <summary>Faces the lock-on target; the camera and the crosshair stay free.</summary>
+        LockOn,
+        /// <summary>Sprint: faces the way she runs.</summary>
+        Sprint,
+        /// <summary>Dodge: turned toward the dash while it lasts (see YoruController.dodgeFacesTravel).</summary>
+        Dodge
+    }
+
     /// <summary>
-    /// Third-person movement for Yoru: camera-relative walk and sprint, jump (with coyote time and input buffer),
+    /// Third-person movement for Yoru: strafing walk and sprint, jump (with coyote time and input buffer),
     /// and a short dodge (the dash). Feeds the Animator (see YoruAnimatorBuilder for the meaning of the parameters);
     /// parameters that the Animator does not have are skipped.
+    ///
+    /// Where she faces and what W/A/S/D mean (the control scheme of 2026-10-28, Docs/AI_Context.md):
+    ///   Normal play: she always faces the crosshair (the camera yaw). W/A/S/D are relative to the camera: W forward, S backs up while she keeps facing forward, A and D side-step.
+    ///   Lock-on: only her body faces the target. W/A/S/D are relative to the target (W toward it, S away, A and D circle it). The camera and the crosshair stay free.
+    ///   Alt (free look): she keeps the facing and the move reference from before while the camera orbits (ThirdPersonCamera.AimYaw).
+    ///   Sprint (Shift held): she faces the way she runs. Stopping, aiming (RMB) or firing ends the sprint and she turns back to the crosshair (or the target).
+    ///   Dodge (Shift tap): the direction comes from the input in the same reference as the walk.
+    /// Bullets always fly along the crosshair (DualPistolCombat), so in normal play the way she faces and the way the bullets go agree.
+    ///
     /// Moving (W, or the stick) plays the walk: the clip Yoru_Walk was made for walkSpeed. A light stick tilt walks proportionally slower.
     /// Shift: a press is the DODGE (the dash starts at once), holding it on goes into the SPRINT as soon as the dodge is over (sprintHoldDelay);
     /// letting go ends the sprint. Ctrl is reserved for its own animation later.
     /// The ground speed wobbles a little within every step, like the speed of a real walker (see gaitSpeedVariation).
+    /// Sideways and backwards there are no clips yet: she glides (the walk plays on, in reverse while she backs up, see reverseWalkWhenBacking).
     /// </summary>
     [RequireComponent(typeof(CharacterController), typeof(GameInput))]
     public class YoruController : MonoBehaviour
@@ -27,6 +50,20 @@ namespace ZeroProtocol.Player
         [Tooltip("Phase of the walk cycle with the highest speed: where the pelvis is lowest (heel strike).")]
         public float gaitSpeedPhase = 0f;
 
+        [Header("Facing")]
+        [Tooltip("Top speed (degrees per second) of the body turning toward the crosshair, the lock target or the way she runs.")]
+        public float turnSpeed = 900f;
+        [Tooltip("How tightly the body follows its goal (1/s, higher = tighter): the turn eases out like a spring instead of stopping dead, and turnSpeed caps it.")]
+        public float turnSharpness = 25f;
+        [Tooltip("She stays out of the sprint (and faces the crosshair or target) this many seconds after the last shot, so a burst of fire does not flicker. Aiming (RMB) ends the sprint for as long as it is held.")]
+        public float fireStanceHold = 0.25f;
+        [Tooltip("No dodge clips exist yet and the dash plays the forward run, so she turns toward the dash while it lasts and then back to the crosshair or target. Switch this off once the four-direction dodge clips exist: she then keeps facing the crosshair or target.")]
+        public bool dodgeFacesTravel = true;
+        [Tooltip("Stopgap until a backward clip exists: while she backs up on foot the walk clip plays in reverse (a negative LocoMult), so the planted feet fit a body that moves backwards. Off = the walk plays forward while she glides back.")]
+        public bool reverseWalkWhenBacking = true;
+        [Tooltip("Seconds the walk needs to flip its playback fully between forward and reverse (the legs slow down and swing back instead of snapping).")]
+        public float reverseFlipTime = 0.12f;
+
         [Header("Sprint (hold Shift)")]
         [Tooltip("Ground speed (m/s) of the sprint = the speed of the run clip (Blender/Yoru_Run_gait.json). It is also the largest animator speed of the dodge.")]
         public float runSpeed = 5f;
@@ -34,7 +71,6 @@ namespace ZeroProtocol.Player
         public float sprintHoldDelay = 0.24f;
         public float acceleration = 30f;
         public float deceleration = 40f;
-        public float turnSpeed = 900f;
         [Tooltip("The ground speed of the sprint is not constant either: it dips by this share of runSpeed while a foot is on the ground (slowest at mid stance) and is steady in the flight. Same number as speed_var of the Blender run (Blender/Yoru_Run_gait.json speed_variation); the planted feet of the clip depend on it.")]
         [Range(0f, 0.15f)] public float runGaitSpeedVariation = 0.08f;
         [Tooltip("Share of the run cycle a foot is on the ground (PH_TO of the Blender run, 8 of 36 frames).")]
@@ -62,35 +98,55 @@ namespace ZeroProtocol.Player
         public Transform cameraTransform;
         public Animator animator;
         public CameraSystem.LockOnSystem lockOn;
+        /// <summary>Found on the camera. It gives the crosshair heading (the camera yaw; frozen while Alt is held).</summary>
+        CameraSystem.ThirdPersonCamera cameraRig;
 
         public bool IsGrounded { get; private set; }
         public bool IsDashing { get { return dashTimer > 0f; } }
         /// <summary>True while she is walking on purpose (a move input, not a dash).</summary>
         public bool IsWalking { get; private set; }
-        /// <summary>True while she sprints: Shift held for sprintHoldDelay (the dodge is over) and a move input.</summary>
+        /// <summary>True while she sprints: Shift held for sprintHoldDelay (the dodge is over), a move input, and neither aiming nor firing.</summary>
         public bool IsSprinting { get; private set; }
+        /// <summary>How her body is turned right now: toward the crosshair, the lock target, the way she runs, or the dash.</summary>
+        public FacingMode Facing { get; private set; }
+        /// <summary>True while a lock-on target is held: she faces it and W/A/S/D are relative to it.</summary>
+        public bool IsLockedOn { get; private set; }
+        /// <summary>Ground velocity in her own frame in m/s: x = toward her right, y = forward (negative = backing up). It feeds the Animator parameters MoveX and MoveY once the Animator has them.</summary>
+        public Vector2 LocalMove { get; private set; }
+        /// <summary>LocalMove in units of walkSpeed: (0, 1) walking forward, (0, -1) backing up, (1, 0) side-stepping right, the sprint is (0, runSpeed / walkSpeed). The planned Animator parameters MoveX and MoveY (Docs/Roadmap.md B1).</summary>
+        public float MoveX { get { return LocalMove.x / Mathf.Max(0.01f, walkSpeed); } }
+        public float MoveY { get { return LocalMove.y / Mathf.Max(0.01f, walkSpeed); } }
         /// <summary>Walk cycle phase 0..1 (0 = right heel strike) as the animator plays it, and the factor the ground speed has right now (1 = mean speed).</summary>
         public float GaitPhase { get; private set; }
         public float GaitSpeedFactor { get; private set; } = 1f;
         /// <summary>0 = at walking speed or slower, 1 = at the sprint speed (how much of the sprint is in the pose).</summary>
         public float SprintBlend { get { return Mathf.Clamp01((HorizontalSpeed - walkSpeed) / Mathf.Max(0.01f, runSpeed - walkSpeed)); } }
-        /// <summary>Playback speed factor of the locomotion clips (1 = as authored).</summary>
+        /// <summary>Playback speed factor of the locomotion clips (1 = as authored). Negative while she backs up on foot: the walk then plays in reverse (reverseWalkWhenBacking).</summary>
         public float LocoMultiplier { get; private set; } = 1f;
         public Vector3 Velocity { get { return horizontalVelocity + Vector3.up * verticalVelocity; } }
         public float HorizontalSpeed { get { return new Vector2(horizontalVelocity.x, horizontalVelocity.z).magnitude; } }
+
+        /// <summary>Closer than this (horizontally) she is on top of the lock target: the direction to it is meaningless, so she keeps the last one.</summary>
+        const float MinLockDistance = 0.3f;
 
         CharacterController cc;
         GameInput input;
         Vector3 horizontalVelocity;
         float verticalVelocity;
-        float coyoteTimer, jumpBufferTimer, dashTimer, dashCooldownTimer, shiftHeldTime;
+        float coyoteTimer, jumpBufferTimer, dashTimer, dashCooldownTimer, shiftHeldTime, fireStanceTimer;
         float airTime;
+        float reverseBlend = 1f;                 // +1 = the walk plays forward, -1 = in reverse
+        float animGroundSpeed;
         bool jumpedThisAir, animGroundedPrev = true, runJump;
         Vector3 dashDirection;
+        Vector3 lastLockForward;
+        bool hasLockForward;
         readonly HashSet<int> animParams = new HashSet<int>();
 
         static readonly int SpeedHash = Animator.StringToHash("Speed");
         static readonly int LocoMultHash = Animator.StringToHash("LocoMult");
+        static readonly int MoveXHash = Animator.StringToHash("MoveX");
+        static readonly int MoveYHash = Animator.StringToHash("MoveY");
         static readonly int GroundedHash = Animator.StringToHash("Grounded");
         static readonly int VerticalHash = Animator.StringToHash("VerticalVelocity");
         static readonly int AirPhaseHash = Animator.StringToHash("AirPhase");
@@ -108,6 +164,8 @@ namespace ZeroProtocol.Player
             if (input == null) input = GetComponent<GameInput>();
             if (animator == null) animator = GetComponentInChildren<Animator>();
             if (cameraTransform == null && Camera.main != null) cameraTransform = Camera.main.transform;
+            if (cameraTransform != null && (cameraRig == null || cameraRig.transform != cameraTransform))
+                cameraRig = cameraTransform.GetComponent<CameraSystem.ThirdPersonCamera>();
             if (lockOn == null) lockOn = GetComponent<CameraSystem.LockOnSystem>();
             if (animator != null)
             {
@@ -119,15 +177,27 @@ namespace ZeroProtocol.Player
 
         void Update()
         {
-            EnsureComponents();
             float dt = Time.deltaTime;
             if (dt <= 0f)
             {
                 if (Application.isPlaying) return;
                 dt = 0.02f;
             }
+            Tick(dt);
+        }
 
-            Vector3 wish = CameraRelative(input != null ? input.Move : Vector2.zero);
+        /// <summary>One step of the controller; Update calls it with the frame time. Public so the verifier can step her with a fixed time step.</summary>
+        public void Tick(float dt)
+        {
+            EnsureComponents();
+
+            // Where "forward" is for her: toward the lock target, else the crosshair heading (the camera yaw, frozen while Alt is held).
+            // W/A/S/D are relative to it, and she faces it unless she runs or dodges.
+            Vector3 lockForward;
+            IsLockedOn = TryGetLockForward(out lockForward);
+            Vector3 aimForward = Quaternion.Euler(0f, AimHeading(), 0f) * Vector3.forward;
+            Vector3 frameForward = IsLockedOn ? lockForward : aimForward;
+            Vector3 wish = FrameRelative(input != null ? input.Move : Vector2.zero, frameForward);
             IsGrounded = cc != null && cc.isGrounded;
 #if UNITY_EDITOR
             if (!Application.isPlaying) IsGrounded = true;
@@ -142,20 +212,15 @@ namespace ZeroProtocol.Player
             if (IsGrounded) { airTime = 0f; if (verticalVelocity <= 0f) jumpedThisAir = false; }
             else airTime += dt;
 
-            Vector3 toLockTarget = Vector3.zero;
-            bool isLockedOn = false;
-            if (lockOn != null && lockOn.Current != null)
-            {
-                toLockTarget = lockOn.Current.AimPoint - transform.position;
-                toLockTarget.y = 0f;
-                if (toLockTarget.sqrMagnitude > 0.01f) isLockedOn = true;
-            }
-            Vector3 lockForward = isLockedOn ? toLockTarget.normalized : transform.forward;
+            // aiming or firing puts her in the combat stance: no sprint, she faces the crosshair (or the target)
+            bool firing = input != null && (input.FireHeld || input.FirePressed);
+            fireStanceTimer = firing ? fireStanceHold : fireStanceTimer - dt;
+            bool combatStance = (input != null && input.AimHeld) || fireStanceTimer > 0f;
 
-            // dash
+            // dash: the direction comes from the input in the same reference as the walk, straight ahead in that reference without input
             if (input != null && input.DashPressed && dashCooldownTimer <= 0f && !IsDashing && IsGrounded)
             {
-                dashDirection = wish.sqrMagnitude > 0.01f ? wish.normalized : (isLockedOn ? lockForward : transform.forward);
+                dashDirection = wish.sqrMagnitude > 0.01f ? wish.normalized : frameForward;
                 dashTimer = dashDuration;
                 dashCooldownTimer = dashCooldown;
             }
@@ -167,33 +232,25 @@ namespace ZeroProtocol.Player
                 float t = 1f - dashTimer / dashDuration;                 // 0 -> 1
                 float ease = Mathf.Lerp(1f, 0.35f, t * t);               // fast start, soft end
                 horizontalVelocity = dashDirection * (dashSpeed * ease);
-                if (isLockedOn)
-                {
-                    RotateTowards(lockForward, dt);
-                }
-                else
-                {
-                    RotateTowards(dashDirection, dt);
-                }
             }
             else
             {
                 float tilt = wish.magnitude;                              // 0..1, the keyboard always gives 1
-                IsSprinting = input.SprintHeld && shiftHeldTime >= sprintHoldDelay && tilt > 0.1f;
+                IsSprinting = input != null && input.SprintHeld && shiftHeldTime >= sprintHoldDelay && tilt > 0.1f && !combatStance;
                 float wanted = WantedSpeed(tilt);
                 IsWalking = tilt > 0.1f;
                 Vector3 target = tilt > 0.0001f ? wish / tilt * wanted : Vector3.zero;
                 float rate = (wish.sqrMagnitude > 0.01f ? acceleration : deceleration) * (IsGrounded ? 1f : airControl);
                 horizontalVelocity = Vector3.MoveTowards(horizontalVelocity, target, rate * dt);
-                if (isLockedOn)
-                {
-                    RotateTowards(lockForward, dt);
-                }
-                else if (wish.sqrMagnitude > 0.01f)
-                {
-                    RotateTowards(wish, dt);
-                }
             }
+
+            // facing: the dash, then the sprint, then the lock target, else the crosshair
+            Vector3 faceForward;
+            if (IsDashing && dodgeFacesTravel) { Facing = FacingMode.Dodge; faceForward = dashDirection; }
+            else if (IsSprinting) { Facing = FacingMode.Sprint; faceForward = wish; }
+            else if (IsLockedOn) { Facing = FacingMode.LockOn; faceForward = lockForward; }
+            else { Facing = FacingMode.Aim; faceForward = aimForward; }
+            TurnTowards(faceForward, dt);
 
             // vertical velocity
             if (IsGrounded && verticalVelocity < 0f) verticalVelocity = -2f;
@@ -214,6 +271,7 @@ namespace ZeroProtocol.Player
             GaitSpeedFactor = IsGrounded && !IsDashing ? GaitFactor() : 1f;
             if (cc != null) cc.Move((horizontalVelocity * GaitSpeedFactor + Vector3.up * vyMove) * dt);
 
+            UpdateMotionState(dt);
             UpdateAnimator();
         }
 
@@ -232,7 +290,7 @@ namespace ZeroProtocol.Player
         /// of each clip is in the pose (the blend tree weights):
         ///   walk  1 + gaitSpeedVariation * cos(4 pi (phase - gaitSpeedPhase))
         ///   run   1 + runGaitSpeedVariation * (4 b / pi - dip),  dip = sin(pi q / b) while a foot is on the ground (q = time since its touchdown, period half a cycle, b = runStanceShare), 0 in the flight
-        /// The animator phase is the one of the last frame.
+        /// The animator phase is the one of the last frame. The factor depends on the pose only, so it also fits the walk played in reverse (the body then moves backwards).
         /// </summary>
         float GaitFactor()
         {
@@ -249,21 +307,80 @@ namespace ZeroProtocol.Player
             return 1f + wWalk * walkTerm + wRun * runTerm;
         }
 
-        Vector3 CameraRelative(Vector2 stick)
+        /// <summary>
+        /// The crosshair heading in degrees: the camera yaw, frozen while Alt is held (ThirdPersonCamera.AimYaw).
+        /// Without a camera rig the heading of the camera transform; without any camera she keeps the facing she has.
+        /// </summary>
+        float AimHeading()
         {
-            if (stick.sqrMagnitude < 0.0001f) return Vector3.zero;
-            Vector3 f = cameraTransform != null ? cameraTransform.forward : Vector3.forward;
-            f.y = 0f; f.Normalize();
-            Vector3 r = Vector3.Cross(Vector3.up, f);
-            return Vector3.ClampMagnitude(f * stick.y + r * stick.x, 1f);
+            if (cameraRig != null) return cameraRig.AimYaw;
+            if (cameraTransform != null)
+            {
+                Vector3 f = cameraTransform.forward;
+                f.y = 0f;
+                if (f.sqrMagnitude > 0.0001f) return Mathf.Atan2(f.x, f.z) * Mathf.Rad2Deg;
+            }
+            return transform.eulerAngles.y;
         }
 
-        void RotateTowards(Vector3 direction, float dt)
+        /// <summary>The horizontal direction from her to the lock target (the frame W/A/S/D are relative to while locked on). False without a target.</summary>
+        bool TryGetLockForward(out Vector3 forward)
+        {
+            forward = Vector3.zero;
+            if (lockOn == null || lockOn.Current == null) { hasLockForward = false; return false; }
+            Vector3 to = lockOn.Current.AimPoint - transform.position;
+            to.y = 0f;
+            if (to.sqrMagnitude > MinLockDistance * MinLockDistance) { lastLockForward = to.normalized; hasLockForward = true; }
+            forward = lastLockForward;
+            return hasLockForward;
+        }
+
+        /// <summary>W/A/S/D (or the stick) in the frame whose forward is given: y = forward, x = to the right of it.</summary>
+        static Vector3 FrameRelative(Vector2 stick, Vector3 forward)
+        {
+            forward.y = 0f;
+            if (stick.sqrMagnitude < 0.0001f || forward.sqrMagnitude < 0.0001f) return Vector3.zero;
+            forward.Normalize();
+            Vector3 right = Vector3.Cross(Vector3.up, forward);
+            return Vector3.ClampMagnitude(forward * stick.y + right * stick.x, 1f);
+        }
+
+        /// <summary>Turns the body toward a direction: it eases out like a spring (turnSharpness), never faster than turnSpeed, and the last tenth of a degree snaps.</summary>
+        void TurnTowards(Vector3 direction, float dt)
         {
             direction.y = 0f;
             if (direction.sqrMagnitude < 0.0001f) return;
-            Quaternion goal = Quaternion.LookRotation(direction, Vector3.up);
-            transform.rotation = Quaternion.RotateTowards(transform.rotation, goal, turnSpeed * dt);
+            float goal = Mathf.Atan2(direction.x, direction.z) * Mathf.Rad2Deg;
+            float current = transform.eulerAngles.y;
+            float delta = Mathf.DeltaAngle(current, goal);
+            float step = Mathf.Abs(delta) < 0.1f
+                ? delta
+                : Mathf.Clamp(delta * (1f - Mathf.Exp(-turnSharpness * dt)), -turnSpeed * dt, turnSpeed * dt);
+            transform.rotation = Quaternion.Euler(0f, current + step, 0f);
+        }
+
+        /// <summary>The numbers the Animator and the other scripts read: her velocity in her own frame and the playback factor of the locomotion clips.</summary>
+        void UpdateMotionState(float dt)
+        {
+            Vector3 local = transform.InverseTransformDirection(horizontalVelocity);
+            LocalMove = new Vector2(local.x, local.z);
+
+            animGroundSpeed = IsDashing ? Mathf.Min(HorizontalSpeed, runSpeed) : HorizontalSpeed;
+            float forwardMult = animGroundSpeed > clipRunSpeed ? Mathf.Min(animGroundSpeed / clipRunSpeed, maxLocoMult) : 1f;
+            LocoMultiplier = forwardMult * ReverseSign(dt);
+        }
+
+        /// <summary>
+        /// +1 normally, -1 while she backs up on foot (more than 120 degrees away from the way she faces, grounded, walking pace, not running or dodging):
+        /// the walk then plays in reverse, which fits a body that moves backwards (the planted feet slide back the right way). The sign is eased through zero so the
+        /// legs slow down and swing back instead of snapping. A stopgap until there is a backward clip.
+        /// </summary>
+        float ReverseSign(float dt)
+        {
+            bool walking = Facing == FacingMode.Aim || Facing == FacingMode.LockOn;
+            bool backing = reverseWalkWhenBacking && walking && IsGrounded && HorizontalSpeed > 0.3f && LocalMove.y < -0.5f * HorizontalSpeed;
+            reverseBlend = Mathf.MoveTowards(reverseBlend, backing ? -1f : 1f, 2f * dt / Mathf.Max(0.01f, reverseFlipTime));
+            return reverseBlend;
         }
 
         void UpdateAnimator()
@@ -275,10 +392,10 @@ namespace ZeroProtocol.Player
             if (animGroundedPrev && !animGrounded && !jumpedThisAir) runJump = HorizontalSpeed > 0.5f * runSpeed;
             animGroundedPrev = animGrounded;
 
-            float speed = IsDashing ? Mathf.Min(HorizontalSpeed, runSpeed) : HorizontalSpeed;
-            LocoMultiplier = speed > clipRunSpeed ? Mathf.Min(speed / clipRunSpeed, maxLocoMult) : 1f;
-            SetFloatDamped(SpeedHash, speed, animSpeedDamp);
+            SetFloatDamped(SpeedHash, animGroundSpeed, animSpeedDamp);
             SetFloat(LocoMultHash, LocoMultiplier);
+            SetFloatDamped(MoveXHash, MoveX, animSpeedDamp);            // the Animator has no MoveX / MoveY yet: skipped until it has them
+            SetFloatDamped(MoveYHash, MoveY, animSpeedDamp);
             SetFloat(VerticalHash, verticalVelocity);
             // 0 = leaving the ground, 0.5 = top of the arc, 1 = touching down (clamped for long falls)
             SetFloat(AirPhaseHash, 0.5f - 0.5f * Mathf.Clamp(verticalVelocity / JumpSpeed, -1f, 1f));
